@@ -11,7 +11,7 @@ project's CLAUDE.md or an ADR. The tools and techniques behind these choices, ad
 |---|---|---|---|---|
 | Tenancy | none: you must choose | `multi-tenant`, `single-tenant`, `single-user` | always a deliberate choice; it decides every scoping rule | `tenancy_mode`; kernel `## Tenancy` |
 | Stage | none: you must choose | `explore`, `build`, `run`, `sustain` | always decided by facts: real data, promised availability, rate of change | `stage`; `CONSTITUTION.md` §4 |
-| Team delivery | off | on: labels, question form, board close-out, digest, door check, ruleset, CODEOWNERS | more than one developer, or a client relationship to coordinate | `team_delivery`; [team practices](practices.md) |
+| Team delivery | off | on: labels, issue forms, ruleset, CODEOWNERS, board runbook | more than one developer, or a client relationship to coordinate | `team_delivery`; [team practices](practices.md) |
 | Release workflow | off | on: build once, deploy to dev on a pre-release, promote the same digest to prod, roll back through the pipeline; the project fills the registry, target-setup and deploy slots | the project deploys a container image to dev and prod, and its stack is decided (`stack_decided`) | `release_workflow`; [template README](../../template/README.md) |
 
 ## Decided in the team practices and patterns
@@ -20,8 +20,8 @@ project's CLAUDE.md or an ADR. The tools and techniques behind these choices, ad
 |---|---|---|---|---|
 | HTTP API shape | versioned `/api/v1/` (a breaking change adds `/api/v2/` alongside); errors as `{"error": {"code", "message", "details"}}`; cursor pagination; ISO 8601 UTC timestamps; UUIDv4 ids; unauthenticated `GET /health` | the client's existing API conventions | the API extends an existing service or a published standard | project `.claude/CLAUDE.md` § Stack; `rules/security/owasp-api-top-10.md` |
 | Repository layout | one repo the client inherits, from day 0 | a separate discovery repo with an end date and a migration checklist | discovery material cannot be shared with the client | Article I |
-| Review | not required; the door check recommends a review on one-way changes; a second reviewer named per story | require one approval (ruleset `required_approving_review_count: 1`); require code-owner approval | regulation, audit or a client contract demands four-eyes on every change | Articles VII, XI |
-| What counts as one-way | data reshaped, contracts others depend on, effects that cannot be called back, governance files — from `.github/doors.toml` | tune paths and patterns per stack; treat same-repo API consumers as two-way with atomic, versioned deploys | the stack is not Alembic/Rails/Django/SQL, or the frontend and API deploy as one unit | Article VII; `doors.toml` |
+| Review | not required; the author requests a review on a one-way change; a second reviewer named per story | require one approval (ruleset `required_approving_review_count: 1`); require code-owner approval | regulation, audit or a client contract demands four-eyes on every change | Articles VII, XI |
+| What counts as one-way | data reshaped, contracts others depend on, effects that cannot be called back, governance files, judged by the author | treat same-repo API consumers as two-way with atomic, versioned deploys | the frontend and API deploy as one unit | Article VII; `CONSTITUTION.md` §5 |
 | Accepting one-way decisions | named decider accepts by agreement; CODEOWNERS requests them | decider approval required by the ruleset | decisions need a recorded, enforced sign-off | Articles IV, VII |
 | Client questions | one per issue, recommendation and default-if-silent, sent within N days | batched documents | the client will not work in GitHub issues | Article VI |
 | Sprints | milestones; one sprint system | an iteration field instead | the client's own planning uses iterations; never both | Article VIII |

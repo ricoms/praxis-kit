@@ -11,12 +11,12 @@ ref = "docs/ai-sdlc/patterns/release-promotion.md"
 evidence = "deployment record"
 
 [[blip]]
-name = "Advisory one-way/two-way door check"
+name = "Automated one-way/two-way door classifier"
 quadrant = "techniques"
-ring = "adopt"
-why = "Labels changes that revert + redeploy cannot undo and recommends a review; never blocks"
-ref = "template/src/.github/doors.toml"
-evidence = "atomic_frontend_deploy"
+ring = "hold"
+why = "It guessed from paths what the author can judge; the author labels one-way changes"
+ref = "docs/ai-sdlc/practices.md"
+evidence = "An automated door classifier was rejected"
 
 [[blip]]
 name = "3-day dependency cooldown"

@@ -1,4 +1,4 @@
-# Board and coordination automation
+# Board
 
 The project board is the source for Estimate, Actual, Remaining Work, Waiting and Phase. Sprints are milestones;
 do not add an iteration field as well.
@@ -10,30 +10,20 @@ do not add an iteration field as well.
 3. In the project's **Workflows** settings, enable: *Auto-add to project* (this repo, `is:issue,pr`),
    *Item added to project* → Todo, *Item closed* → Done, *Pull request merged* → Done, *Auto-add sub-issues*.
    GitHub has no API for these, so this step is manual.
-4. Repo variables: `PROJECT_OWNER`, `PROJECT_NUMBER`.
-5. Repo secrets: `PROJECT_TOKEN`, a token that can write the project — the default workflow token cannot. Use a
-   classic token with the `project` scope, plus `repo` when this repo is private (fine-grained tokens cannot reach
-   user-owned projects), or a GitHub App token for an org project. Optionally, `SLACK_WEBHOOK_URL` for the daily digest.
-6. Run the `labels` workflow once (Actions → labels → Run workflow).
+4. Run the `labels` workflow once (Actions → labels → Run workflow).
+
+When an issue closes, its assignee sets Remaining Work to 0, records Actual, and records Waiting separately as
+decision latency.
 
 ## What runs
 
-| Workflow | When | Does |
-|---|---|---|
-| `labels` | push to `.github/labels.tsv`, manual | creates or updates labels from the file |
-| `close-out` | issue closed as completed | sets Remaining Work to 0; if the issue has an Estimate and no Actual, asks the assignees for Actual and Waiting |
-| `digest` | weekdays 11:00 UTC, manual | posts client questions without `asked` (flagging those older than {{ ask_deadline_days }} days) and non-draft PRs with no outside review after {{ review_wait_hours }} h |
-
-Thresholds and label names live in `.github/team-delivery.env`.
+The `labels` workflow creates or updates the labels in `.github/labels.tsv` when that file changes on `main`, or when
+it is run by hand.
 
 ## Symptoms
 
 | Symptom | Fix |
 |---|---|
-| `close-out` fails: "is not on project" | The project's auto-add workflow is off or filtered; enable it (step 3), add the issue, re-run the job |
-| `close-out` fails: "PROJECT_TOKEN secret is not set" | Add the secret (step 5) |
-| `close-out` fails: "Could not resolve to a Repository" | The token lacks `repo` on a private repo; reissue it with `project` and `repo` (step 5) |
-| `close-out` fails: "has no \"Remaining Work\" field" | Run `scripts/board/bootstrap-project.sh` |
-| `digest` warns "SLACK_WEBHOOK_URL is not set" | Add the secret, or read the digest in the run summary |
+| An issue is missing from the board | The project's auto-add workflow is off or filtered; enable it (step 3) and add the issue |
 | Labels missing on new issues | Run the `labels` workflow |
 | Old issues still carry `type:question` after a template update, so they have no kind | Renaming fails, because the repo already has a `question` label. Add `question` to each one, then delete the old label: `gh issue list --label type:question --state all --json number --jq '.[].number' \| xargs -I{} gh issue edit {} --add-label question` and `gh label delete type:question --yes` |

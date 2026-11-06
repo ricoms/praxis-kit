@@ -19,12 +19,6 @@ smoke url:
     scripts/smoke.sh {{ "{{" }} url {{ "}}" }}
 
 {% endif %}
-{% if team_delivery %}
-# In-scope endpoints for a security test, from the API contract (openapi.json, or API_CONTRACT)
-security-scope +urls:
-    python3 scripts/security-scope.py {{ "{{" }} urls {{ "}}" }}
-
-{% endif %}
 # Every check CI's `checks` job runs; keep it the one place that list lives. The stage sets it (CONSTITUTION.md §4):
 # `explore` asks for tests only, and later stages add lint and the dependency audit. Runs all of them and fails at
 # the end, so one failing recipe does not hide the others' results.

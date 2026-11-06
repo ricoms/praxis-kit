@@ -24,7 +24,7 @@ body:
     id: scope
     attributes:
       label: Scope
-      description: Paste the output of `just security-scope <base-url>` for the environment under test, and list anything out of scope.
+      description: Every path and method in the API contract for the environment under test, with its base URL, and anything out of scope.
     validations:
       required: true
   - type: dropdown

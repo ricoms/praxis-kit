@@ -1,5 +1,25 @@
 # Template Changelog
 
+## Less process automation (2026-11-06)
+
+The template stops rendering automation that policed how people work:
+
+- the door check: `.github/workflows/doors.yml`, `.github/scripts/doors.py`, `doors.sh` and `.github/doors.toml`;
+- the board close-out: `.github/workflows/close-out.yml` and `.github/scripts/close-out.sh`;
+- the daily digest: `.github/workflows/digest.yml` and `.github/scripts/digest.sh`;
+- `.github/team-delivery.env`, which only those scripts read;
+- `scripts/security-scope.py` and the `security-scope` recipe.
+
+The agreements stay. The author labels a one-way change `door:one-way` and requests a review, the assignee records
+Actual and Remaining Work when an issue closes, and a security test's scope is listed from the API contract. The
+`door:two-way` label goes too, because nothing applies it; the labels workflow does not delete labels, so run
+`gh label delete door:two-way --yes`.
+
+An update deletes the files above, including any the project edited. To keep one, restore it with
+`git checkout HEAD -- <path>` before committing the update. The
+`PROJECT_OWNER` and `PROJECT_NUMBER` variables and the `PROJECT_TOKEN` and `SLACK_WEBHOOK_URL` secrets have no reader
+any more: delete them, and revoke the token and the Slack webhook.
+
 ## CI grows with the stack (2026-11-06)
 
 A new question, `stack_decided`, says whether the project's stack is decided. Until it is true, CI renders only the

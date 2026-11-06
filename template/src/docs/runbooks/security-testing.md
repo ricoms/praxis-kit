@@ -4,7 +4,7 @@ A pentest or external scan is prepared before a vendor is booked, so it can star
 scope or the rules living in chat. The record is one *Security test* issue.
 
 ## Before booking
-- Generate the scope for the environment under test: `just security-scope https://<dev-or-staging-url>`.
+- List the scope for the environment under test: every path and method in the API contract, with the base URL.
 - Open a *Security test* issue: window, stance, scope, findings recipient, alarm channel.
 - Agree the release freeze with the client and record it in the issue.
 
@@ -27,6 +27,6 @@ scope or the rules living in chat. The record is one *Security test* issue.
 
 | Symptom | Fix |
 |---|---|
-| The vendor asks for scope at short notice | Run `just security-scope` and paste it into the issue; do not assemble it from chat |
+| The vendor asks for scope at short notice | List it from the API contract and paste it into the issue; do not assemble it from chat |
 | An alarm fires during the window | Check the testers' source addresses first; if they don't match, treat it as an incident |
 | A tester account is still active after the window | Remove it now and record the late removal in the issue |

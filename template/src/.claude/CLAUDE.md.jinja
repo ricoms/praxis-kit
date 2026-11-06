@@ -89,8 +89,8 @@ adjustment. Read that file before acting on a working agreement.
 
 - The board is the source for Estimate, Actual, Remaining Work, Waiting and Phase. Actual is days of work; Waiting
   is days blocked; never add them. Sprints are milestones. See `docs/runbooks/board.md`.
-- Never merge on red. Reviews are not required: the `doors` check labels one-way changes `door:one-way` and
-  recommends a review; CODEOWNERS requests it automatically. Work on a one-way change stops, and the PR does not
+- Never merge on red. Reviews are not required: the author labels a one-way change `door:one-way` and requests a
+  review; CODEOWNERS requests one automatically on the paths it owns. Work on a one-way change stops, and the PR does not
   merge, until its ADR is accepted by the named decider (`CONSTITUTION.md` §5). See `docs/runbooks/review-and-merge.md`.
 - One client question per issue (the *Client question* form), labelled `owner:{{ client_owner_label }}`. Check it
   with the team, send it within {{ ask_deadline_days }} working days, then add `asked`.

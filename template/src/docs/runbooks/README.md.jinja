@@ -12,7 +12,7 @@ reading one cold, start with `just --list` for the actual command surface.
 | [`rollback.md`](rollback.md) | Rolling back to a previous release through the pipeline |
 {% endif %}
 {% if team_delivery %}
-| [`board.md`](board.md) | Board fields, close-out, daily digest, labels — setup and failures |
+| [`board.md`](board.md) | Board fields and labels — setup and failures |
 | [`security-testing.md`](security-testing.md) | Preparing, running and closing a pentest or external scan |
 | [`review-and-merge.md`](review-and-merge.md) | Ruleset, CODEOWNERS, required checks — applying and unblocking |
 | [`hand-over.md`](hand-over.md) | What the team does when this repository passes to the client |
@@ -31,10 +31,6 @@ GitHub Actions secrets this repo's workflows read. Rotate per
 {% if release_workflow %}
 | `DATABASE_URL` | `release.yml` (`deploy` job) | Only if the project writes `scripts/migrate.sh`: one per GitHub environment (`dev`, `prod`), that environment's connection string for the forward-only migration |
 {% endif %}
-{% if team_delivery %}
-| `PROJECT_TOKEN` | `close-out.yml` | Writes board fields; the default token cannot write to projects |
-| `SLACK_WEBHOOK_URL` | `digest.yml` | Optional; posts the daily waiting digest |
-{% endif %}
-{% if not release_workflow and not team_delivery %}
+{% if not release_workflow %}
 | _(none yet)_ | | No workflow in this repo currently reads a `secrets.*` value |
 {% endif %}

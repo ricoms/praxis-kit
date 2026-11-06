@@ -74,8 +74,7 @@ Nothing here is specific to one person. A person's own tooling lives in their ow
 - The [GitHub CLI](https://cli.github.com/), `gh`, signed in. Several skills read and file issues and pull requests
   through it.
 - For the template: [`copier`](https://copier.readthedocs.io/) and a GitHub repository. With the template's
-  `team_delivery` option, also a GitHub Projects board for the team, and a Slack incoming webhook if you want the
-  daily digest.
+  `team_delivery` option, also a GitHub Projects board for the team.
 - To run the kit's own checks: `actionlint`, `shellcheck` and Docker for `just check-template`, and
   [qmd](https://github.com/tobi/qmd) for `just docs-index`.
 
@@ -146,13 +145,13 @@ instead of replaced. `just clean-stale ../my-kit` removes dangling links into it
 | Stage | `explore`, `build`, `run` or `sustain`. A project declares one, and the stage decides which practices are on ([constitution §4](CONSTITUTION.md#4-stages)). |
 | Tenancy mode | `multi-tenant`, `single-tenant` or `single-user`. A project declares one, and it decides how data access is scoped ([glossary](claude/rules/glossary.md)). |
 | Gate and ratchet | New code must meet a practice before it merges: a gate. Existing code records today's shortfall once as a baseline that may only shrink: a ratchet ([constitution §3](CONSTITUTION.md#3-gates-and-ratchets)). |
-| One-way and two-way door | A change is one-way when reverting it after release may not restore an equivalent state, and two-way when a revert and redeploy does. The template labels pull requests `door:one-way` or `door:two-way` ([constitution §5](CONSTITUTION.md#5-agreements-between-us)). |
+| One-way and two-way door | A change is one-way when reverting it after release may not restore an equivalent state, and two-way when a revert and redeploy does. The author labels a one-way pull request `door:one-way` ([constitution §5](CONSTITUTION.md#5-agreements-between-us)). |
 | Slot | A recipe, script, action, repository variable or API contract the project fills for its stack. The template's workflows call slots, and an unfilled slot fails loudly ([template README](template/README.md#the-slots-a-project-fills)). |
 | Board fields | Estimate, Actual, Remaining Work, Waiting and Phase: fields on the team's GitHub Projects board, defined in the board runbook the template renders. |
 | Radar | [`docs/ai-sdlc/radar.md`](docs/ai-sdlc/radar.md): the kit's tool and practice choices, each linked to a file that backs it. A check fails when that file stops saying so. |
 | ADR | Architecture decision record: one file per decision under `docs/adr/`, with its status and who decided. |
 | RACI | Who is Responsible, Accountable, Consulted and Informed for each type of decision ([practices, Article IV](docs/ai-sdlc/practices.md#iv-raci-by-decision-type)). |
-| Door classifier | The template's `doors` workflow (`.github/scripts/doors.py`), which labels each pull request one-way or two-way from what it changes. |
+| Door classifier | A script that labels each pull request one-way or two-way from the paths it changes. The evidence in `docs/ai-sdlc/evidence.md` was measured with one; the template does not ship it. |
 | Engagement ledger | A private record, kept outside the repository, of who was told what and when, and of open requests to people outside the team ([decision points](docs/ai-sdlc/decision-points.md)). |
 | AI-SDLC | AI-assisted software development lifecycle, the name of the [`docs/ai-sdlc/`](docs/ai-sdlc/) folder that holds the practices. |
 | hugin | The kit's command-line tool, run as `uv run hugin`. It renders and checks the radar and reads delivery velocity ([ADR 0001](docs/adr/0001-kit-tooling-hugin.md)). |
