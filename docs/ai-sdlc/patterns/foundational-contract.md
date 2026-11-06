@@ -34,17 +34,26 @@ or Cucumber-JVM's `cucumber.features`. Two controls guard the folder, and neithe
 - **Agents cannot change it.** The project's `.claude/settings.json`, which the template renders, holds the deny rule
   `Edit(./tests/foundational/**)`. It covers Claude Code's edit, write and notebook tools, and the shell commands it
   recognises, such as `sed`, `tee` and `>` redirection. It holds in every permission mode, and no allow rule can
-  override it. A script that opens the file itself is not covered, which the next control catches.
-- **People can, visibly.** On a team, a `.github/CODEOWNERS` line for the folder requests the scenario owners' review
-  on every PR that touches it. Removing or renaming a test, or changing an expected value, is a change in that folder.
-  The deny rule does not stop a shell `rm` or `mv`, so this control also catches an agent that deletes a test.
+  override it. The project's `.claude/CLAUDE.md` also tells agents never to edit, move or delete a file there.
+- **People can, visibly.** On a team, `.github/CODEOWNERS` requests the decision owners' review on every PR that
+  touches the folder or `.claude/settings.json`. Removing or renaming a test, or changing an expected value, shows as
+  a change in that folder. The review is a request, as every review is by default; a team that wants it required
+  turns on `require_code_owner_review` in its ruleset.
+
+The freeze has edges, and review covers them rather than more checks:
+
+- The deny rule applies only to a session started at the repository root. A session started in a subfolder does not
+  load the root's `.claude/settings.json`, so the `CLAUDE.md` rule is all that holds there.
+- It does not stop a shell `rm` or `mv`, or a script that opens a file itself.
+- The runner configuration, and the `Given` and `When` steps and fixtures, sit outside the folder. Changing them can
+  skip a frozen test or fake the state a frozen `Then` reads, and each such change shows in the diff.
 
 A pending, skipped or todo foundational test warns on a PR and fails on `main`:
 
 | Stack | Pending on `main` fails when |
 |---|---|
-| pytest | `pytest tests/foundational -q -rsx \| grep -E '^(SKIPPED\|XFAIL)'` finds a line |
-| RSpec | `rspec tests/foundational --format json \| jq -e '.summary.pending_count == 0'` is false |
+| pytest | `pytest tests/foundational -q -rsx` exits 5 because it collected no test, or its output has a `SKIPPED` or `XFAIL` line |
+| RSpec | `rspec tests/foundational --format json \| jq -e '.summary.example_count > 0 and .summary.pending_count == 0'` is false |
 | Vitest | `vitest run tests/foundational --reporter=json --outputFile=f.json`, then any status other than `passed`/`failed` in `f.json` |
 
 Cucumber fails on pending or undefined steps when run with `--strict`. Run the check with

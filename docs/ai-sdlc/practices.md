@@ -158,7 +158,7 @@ to 0, records Actual, and records Waiting separately as decision latency. Estima
 
 Spec per story. A story branch with one PR per spec phase; main stays releasable. Foundational tests are written by
 someone other than the implementer and live in a frozen folder: agents cannot edit it, and CODEOWNERS requests the
-scenario owners' review when a person does. Freeze docs and issues before a readout or delivery.
+decision owners' review when a person does. Freeze docs and issues before a readout or delivery.
 
 - Enforced: `template` `.github/CODEOWNERS`, `.claude/settings.json` · `prose`
   [foundational contract](patterns/foundational-contract.md): authorship rule and pending recipes per stack · `skill`

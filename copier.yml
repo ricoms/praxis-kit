@@ -5,6 +5,8 @@
 _min_copier_version: "9.0"
 _subdirectory: template/src
 _answers_file: .copier-answers.praxis-kit.yml
+_skip_if_exists:
+  - .claude/settings.json
 _envops:
   trim_blocks: true
   lstrip_blocks: true

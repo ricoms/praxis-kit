@@ -61,7 +61,7 @@ def test_a_created_customer_can_be_retrieved():
 
 ## What to replace
 
-Replace only what crosses the module's outbound edge:
+Replace only the external systems the module calls:
 
 - external APIs, such as payment, email and third-party SDKs;
 - the clock and randomness;

@@ -1,9 +1,8 @@
 ---
 name: writing-tests
 description: >-
-  Tests at the right tier: Gherkin scenarios for flows, component tests per
-  module, structural checks; frozen foundational tests. Use when planning,
-  writing or reviewing tests.
+  Tests by tier: Gherkin scenarios, component tests, structural checks;
+  frozen foundational tests. Use when planning, writing or reviewing tests.
 metadata:
   tags:
     - testing
@@ -25,7 +24,7 @@ change entirely, and a good test does not notice.
 | Tier | What it checks | When it is written | Example tools |
 |---|---|---|---|
 | Scenario | A flow across modules, or a behaviour a user sees, in Gherkin | Before the implementation, from the spec | behave or pytest-bdd (Python), Cucumber (JVM, Ruby, JavaScript), playwright-bdd (browser), godog (Go) |
-| Component | One module through its public interface, with only its outbound edges replaced | Test-first, one slice at a time | pytest, Vitest or Jest, RSpec, JUnit, `go test`, `cargo test` |
+| Component | One module through its public interface, with only the external systems it calls replaced | Test-first, one slice at a time | pytest, Vitest or Jest, RSpec, JUnit, `go test`, `cargo test` |
 | Structural | Types, lint, complexity and module boundaries | Configured once, run on every change | mypy or pyright, Ruff, `tsc`, ESLint, clippy, import-linter, dependency-cruiser |
 
 The tools are examples, not requirements. The project's stack decides them, and its `justfile` runs them through
@@ -72,7 +71,7 @@ understood.
 3. **Refactor**, only while green. Remove duplication, and move complexity behind a smaller interface. Run the tests
    after each step.
 
-Replace only what crosses the module's outbound edge: an external API, the clock, randomness, and sometimes the
+Replace only the external systems the module calls: an external API, the clock, randomness, and sometimes the
 filesystem or a database that is too slow to start. Never replace the module's own collaborators.
 [good-tests.md](good-tests.md) shows good and bad tests and how to design for this.
 
@@ -94,8 +93,9 @@ practices Article IX and `docs/ai-sdlc/patterns/foundational-contract.md` explai
   runner's configuration names the folder.
 - **An agent never edits, moves or deletes a file in that folder.** The project's `.claude/settings.json` stops Claude
   Code's editing tools and the shell commands it recognises, but not `rm` or `mv`, so this rule holds either way. If a
-  frozen test looks wrong, stop and tell the person you act for. The scenario's owner changes it.
-- A person may change one. On a team, the CODEOWNERS line for the folder requests the scenario owners' review.
+  frozen test looks wrong, stop and tell the person you act for. Its owner changes it. The deny rule applies only to a
+  session started at the repository root, so start Claude Code there.
+- A person may change one. On a team, the CODEOWNERS line for the folder requests the decision owners' review.
 - A pending or skipped foundational test never reaches `main`.
 
 ## When test-first is the wrong tool
