@@ -14,7 +14,7 @@ Nothing specific to one person belongs here. A person's own tooling lives in the
 just list-profiles              # profiles + descriptions
 just resolve PROFILE             # merged artifact set after extends chain
 just validate                    # every artifact claimed by >=1 profile, agent tool grants cover what their skill invokes, description length lint
-just check-template              # render template variants, actionlint + shellcheck, ruleset vs ci.yml, practices and constitution claims
+just check-template              # render template variants, actionlint + shellcheck, ruleset vs ci.yml, practices links and claims
 just test                        # fixture tests for hugin's commands (scripts/tests)
 just typecheck                   # mypy --strict on src/hugin
 just check                       # everything CI runs, in order: validate, budget, radar check, test, typecheck, check-template; run before every push

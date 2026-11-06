@@ -20,13 +20,21 @@ needs the team's access, and the last one ends it. Keep the issue or PR that did
    Verify: `.github/CODEOWNERS` names no team handle, and the client can open the board it will use.
 4. Write every private name the team used to `.git/info/private-refs`, one extended regex per line. Include other
    repositories, internal tools, Slack or email domains, and each team member's name and handle. That file is
-   never committed, so the names do not reach the client. Run `git grep -nIE -f .git/info/private-refs` and fix
-   every line it reports. A line that must keep a name, such as an ADR's deciders or a past `rotations.log` entry,
-   stays if the architecture decider agrees. A transfer carries the whole history, so also run
-   `git log --all -p --format= | grep -nE -f .git/info/private-refs`. If that finds a name outside the lines kept
-   above, the architecture decider chooses between rewriting the history and handing over a fresh repository.
-   Issues and pull requests travel with a transfer too, so search them for the same names. Verify: both commands
-   print only lines the architecture decider chose to keep, and `docs/raci.md` names no person.
+   never committed, so the names do not reach the client. Join the patterns into one, leaving out blank and comment
+   lines: `pat=$(grep -vE '^[[:space:]]*(#|$)' .git/info/private-refs | paste -sd'|' -)`. Then run three searches,
+   each case-insensitive:
+   - `git grep -nIiE "$pat"` lists matching lines in the current files. Fix every one. A line that must keep a
+     name, such as an ADR's deciders or a past `rotations.log` entry, stays if the architecture decider agrees.
+   - `git log --all -i -E -G "$pat" --format='%h %s' --name-only` lists the commits whose changes add or remove a
+     name, with their files.
+   - `git log --all -i -E --grep "$pat" --format='%h %s'` lists the commits whose messages name one, including
+     trailers such as `Co-Authored-By`.
+
+   A transfer carries the whole history. Commit authors are not searched, because they stay unless the history is
+   rewritten. If the history searches list a commit beyond the lines kept above, the architecture decider chooses
+   between rewriting the history and handing over a fresh repository. Issues and pull requests travel with a
+   transfer too, so search them for the same names. Verify: the searches list only what the architecture decider
+   chose to keep, and `docs/raci.md` names no person.
 5. Move access per the joining-and-leaving agreement (`CONSTITUTION.md` §5) and the access practice
    (`CONSTITUTION.md` §4: "Access granted on joining and removed on leaving"). Transfer the repository to the
    client's organization, or grant the client's own owners admin on it. Then remove every team member's access to
