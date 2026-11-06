@@ -45,9 +45,10 @@ tenancy_mode:
     - single-user
   help: >-
     Pick deliberately — wrong mode bakes in friction or risk.
-    multi-tenant = B2B SaaS, multiple customer orgs share one deployment (tenant_id scoping NON-NEGOTIABLE).
-    single-tenant = internal tool / one-customer build / multi-user app for one org (user-level ownership only).
-    single-user = personal tool / research code / single-user CLI (no scoping rules).
+    multi-tenant = B2B SaaS, multiple customer orgs share one deployment.
+    single-tenant = Internal tool, one-customer build, multi-user app for one org.
+    single-user = Personal tool, research code, single-user CLI, library.
+    The glossary in claude/rules/glossary.md gives what each mode implies.
 
 stage:
   type: str

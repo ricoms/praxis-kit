@@ -21,15 +21,17 @@ ANSWERS_FILE = ".copier-answers.praxis-kit.yml"
 BASE = {"project_name": "Demo App", "description": "demo", "tenancy_mode": "single-tenant", "stage": "build",
         "stack_decided": "true"}
 VARIANTS: dict[str, dict[str, str]] = {
-    "explore": {"stage": "explore", "stack_decided": "false", "team_delivery": "true", "code_owners": "@acme/devs"},
-    "explore-stack": {"stage": "explore"},
+    "explore": {"stage": "explore", "tenancy_mode": "multi-tenant", "stack_decided": "false", "team_delivery": "true",
+                "code_owners": "@acme/devs"},
+    "explore-stack": {"stage": "explore", "tenancy_mode": "single-user"},
     "plain": {"stack_decided": "false"},
-    "release": {"release_workflow": "true"},
+    "release": {"stage": "run", "release_workflow": "true"},
     "team": {"team_delivery": "true", "code_owners": "@acme/devs"},
     "team-release": {
         "team_delivery": "true",
         "code_owners": "@acme/devs",
         "decision_owners": "@acme/architects",
+        "stage": "sustain",
         "release_workflow": "true",
     },
 }
@@ -38,6 +40,8 @@ STACK_FREE_JOBS = {"gitleaks"}
 CI_RECIPES = {"explore": "test"}
 CI_RECIPES_AFTER_EXPLORE = "lint test audit"
 CHECKED_TAGS = {"template", "check", "skill"}
+DECLARATION_SOURCES = {"tenancy_mode": (Path("claude") / "rules" / "glossary.md", "Mode"),
+                       "stage": (Path("CONSTITUTION.md"), "Stage")}
 
 
 def render(src: Path, dest: Path, data: dict[str, str]) -> None:
@@ -471,10 +475,89 @@ def release_needs_stack(src: Path, tmp: Path) -> list[str]:
     return []
 
 
-def declarations_rendered(project: Path, answers: dict[str, str]) -> list[str]:
+def _cells(line: str) -> list[str]:
+    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+
+
+def table_rows(source: Path, key_header: str) -> dict[str, dict[str, str]]:
+    """The rows of the table whose first header is KEY_HEADER, keyed by their first cell without backticks."""
+    lines = source.read_text().splitlines()
+    start = next((i for i, line in enumerate(lines) if line.startswith("|") and _cells(line)[0] == key_header), None)
+    if start is None:
+        raise ValueError(f"{source} has no table headed {key_header!r}")
+    headers = _cells(lines[start])
+    if start + 1 >= len(lines) or not all(re.fullmatch(r":?-+:?", cell) for cell in _cells(lines[start + 1])):
+        raise ValueError(f"{source}:{start + 2}: the table headed {key_header!r} has no separator row")
+    rows: dict[str, dict[str, str]] = {}
+    for number, line in enumerate(lines[start + 2:], start + 3):
+        if not line.startswith("|"):
+            break
+        cells = _cells(line)
+        if len(cells) != len(headers):
+            raise ValueError(f"{source}:{number}: the row has {len(cells)} cells and the header {len(headers)}")
+        key = cells[0].strip("`")
+        if key in rows:
+            raise ValueError(f"{source}:{number}: a second row for `{key}`")
+        rows[key] = dict(zip(headers[1:], cells[1:], strict=True))
+    return rows
+
+
+type Tables = dict[str, dict[str, dict[str, str]]]
+
+
+def source_tables(root: Path) -> tuple[Tables, list[str]]:
+    tables: Tables = {}
+    errors = []
+    for key, (source, header) in DECLARATION_SOURCES.items():
+        try:
+            tables[key] = table_rows(root / source, header)
+        except ValueError as error:
+            errors.append(str(error))
+    return tables, errors
+
+
+def declarations_rendered(project: Path, answers: dict[str, str], tables: Tables) -> list[str]:
     claude_md = (project / ".claude" / "CLAUDE.md").read_text()
-    return [f".claude/CLAUDE.md does not declare {key} `{answers[key]}`" for key in ("tenancy_mode", "stage")
-            if f"**`{answers[key]}`**" not in claude_md]
+    errors = []
+    for key, (source, _) in DECLARATION_SOURCES.items():
+        value = answers[key]
+        if f"**`{value}`**" not in claude_md:
+            errors.append(f".claude/CLAUDE.md does not declare {key} `{value}`")
+        if key not in tables:
+            continue
+        row = tables[key].get(value)
+        if row is None:
+            errors.append(f"{source} has no row for {key} `{value}`")
+            continue
+        errors += [f".claude/CLAUDE.md does not give {source}'s {column!r} cell for `{value}`: {cell}"
+                   for column, cell in row.items() if f"\n- {column}: {cell}\n" not in claude_md]
+    return errors
+
+
+def variants_cover_sources(tables: Tables) -> list[str]:
+    errors = []
+    for key, rows in tables.items():
+        rendered = {{**BASE, **data}[key] for data in VARIANTS.values()}
+        errors += [f"no variant renders {key} `{value}` from {DECLARATION_SOURCES[key][0]}" for value in rows
+                   if value not in rendered]
+    return errors
+
+
+def help_matches_sources(root: Path, tables: Tables) -> list[str]:
+    copier_yml = (root / "copier.yml").read_text()
+    errors = []
+    for key, rows in tables.items():
+        source = DECLARATION_SOURCES[key][0]
+        question = re.search(rf"^{key}:\n((?:[ \t].*\n|\n)*)", copier_yml, re.MULTILINE)
+        if question is None:
+            errors.append(f"copier.yml has no {key} question")
+            continue
+        block = " ".join(question.group(1).split())
+        for value, row in rows.items():
+            cell = " ".join(next(iter(row.values())).split())
+            if f"{value} = {cell}." not in block:
+                errors.append(f"copier.yml: the {key} help does not give {source}'s first cell for `{value}`: {cell}")
+    return errors
 
 
 def _job_blocks(workflow: Path) -> dict[str, str]:
@@ -567,7 +650,9 @@ def run(root: Path) -> int:
     with tempfile.TemporaryDirectory() as tmp:
         src = kit_repo(root, Path(tmp) / "kit")
         failures += declarations_required(src, Path(tmp)) + release_needs_stack(src, Path(tmp))
-        failures += earlier_release_keeps_stack(src, Path(tmp))
+        tables, table_errors = source_tables(root)
+        failures += earlier_release_keeps_stack(src, Path(tmp)) + table_errors + help_matches_sources(root, tables)
+        failures += variants_cover_sources(tables)
         update_errors = update_round_trip(src, Path(tmp))
         failures += update_errors
         print(f"update: {'FAIL' if update_errors else 'ok'}")
@@ -582,7 +667,7 @@ def run(root: Path) -> int:
             errors += dependabot_directories_exist(project) + slots_fail_until_written(project)
             errors += smoke_script_behaves(project) + deploy_rollback_behaves(project)
             answers = {**BASE, **data}
-            errors += declarations_rendered(project, answers)
+            errors += declarations_rendered(project, answers, tables)
             errors += runbooks_indexed(project) + ci_follows_stage(project, answers["stage"])
             errors += ci_slots_wired(project) if answers["stack_decided"] == "true" else ci_needs_no_stack(project)
             errors += scripts_run_on_bash_32(project) + precommit_passes(project)

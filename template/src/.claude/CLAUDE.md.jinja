@@ -5,40 +5,36 @@ Extends praxis-kit's rules in `~/.claude/rules/` (global). Where the two conflic
 
 ## Tenancy mode
 
-**`{{ tenancy_mode }}`** (declared at bootstrap; see global CLAUDE.md `## Tenancy` for what this implies)
+**`{{ tenancy_mode }}`**, declared at bootstrap. Its row in praxis-kit's `rules/glossary.md`:
 
 {% if tenancy_mode == "multi-tenant" -%}
-Tenant-scoping rules apply NON-NEGOTIABLY:
-- Every data-touching endpoint filters by `org_id` from JWT claims
-- Every multi-tenant table has an `org_id` column with an index prefixed by it
-- Cross-tenant access returns 404, not 403 (no existence disclosure)
-- Apply the `isolating-multi-tenant-llm` skill for any LLM-touching code
+- When to pick: B2B SaaS, multiple customer orgs share one deployment
+- Implications: `tenant_id` / `org_id` scoping NON-NEGOTIABLE on every data-touching endpoint and table. BOLA checks, cross-tenant returns 404 not 403. Apply `isolating-multi-tenant-llm` skill
 {%- elif tenancy_mode == "single-tenant" -%}
-User-level ownership checks apply NON-NEGOTIABLY:
-- Every data-touching endpoint verifies `object.owner_id == current_user.id`
-- NO `tenant_id` / `org_id` column on tables
-- Auth + RBAC still required
+- When to pick: Internal tool, one-customer build, multi-user app for one org
+- Implications: User-level ownership checks NON-NEGOTIABLE. NO `tenant_id` column — BOLA becomes ownership-check (object.owner_id == user.id). Auth + RBAC still required
 {%- else -%}
-No scoping rules apply. Auth is OPTIONAL. The following remain required regardless:
-- Input validation at boundaries
-- SSRF protection on outbound requests
-- Security headers + secrets lifecycle (per global rules)
-- Supply chain rules (upper-bound pinning, maintenance assessment)
+- When to pick: Personal tool, research code, single-user CLI, library
+- Implications: No scoping rules; auth itself OPTIONAL. Input validation, SSRF, security headers, secrets lifecycle, supply-chain rules still apply
 {%- endif %}
 
 
 ## Stage
 
-**`{{ stage }}`** (declared at bootstrap; `CONSTITUTION.md` §4, next to the global `CLAUDE.md`, lists the practices each stage switches on)
+**`{{ stage }}`**, declared at bootstrap. Its row in `CONSTITUTION.md` §4, next to the global `CLAUDE.md`, which also lists the practices each stage switches on:
 
 {% if stage == "explore" -%}
-No real users and no real data. Leaves the stage when the first real user or real record arrives, or the code is thrown away.
+- True of the project: no real users and no real data
+- It leaves the stage when: the first real user or real record arrives, or the code is thrown away
 {%- elif stage == "build" -%}
-Real users or real data, but nobody has been promised availability. Leaves the stage when availability is promised, by a contract, a service level or a launch.
+- True of the project: real users or real data, but nobody has been promised availability
+- It leaves the stage when: availability is promised, by a contract, a service level or a launch
 {%- elif stage == "run" -%}
-Availability is promised, and the code changes actively. Leaves the stage when change is mostly fixes and upgrades.
+- True of the project: availability is promised, and the code changes actively
+- It leaves the stage when: change is mostly fixes and upgrades
 {%- else -%}
-Availability is promised, and change is mostly fixes and upgrades. Leaves the stage when it is retired or rebuilt.
+- True of the project: availability is promised, and change is mostly fixes and upgrades
+- It leaves the stage when: it is retired or rebuilt
 {%- endif %}
 
 

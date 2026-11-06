@@ -1,5 +1,13 @@
 # Template Changelog
 
+## Tenancy and stage cells from their sources (2026-11-06)
+
+The `## Tenancy mode` and `## Stage` sections of `.claude/CLAUDE.md` now give the declared value and the exact cells
+of its row in praxis-kit's `rules/glossary.md` and `CONSTITUTION.md` §4. They no longer name a stack: the claims about
+`org_id` from JWT claims and an index prefixed by it are gone. If a project edited those sections, `copier update`
+writes inline conflict markers into `.claude/CLAUDE.md`, which agents load; resolve them before committing, keeping
+the project's own additions below the cells.
+
 ## No private-reference check (2026-11-06)
 
 The template stops rendering `scripts/private-refs.sh`, `.github/private-refs.txt` and CI's `private-refs` job. The
