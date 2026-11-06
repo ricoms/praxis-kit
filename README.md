@@ -18,6 +18,10 @@ It gives the team three things:
 - **A [copier](https://copier.readthedocs.io/) template** that adds the delivery machinery to a project: CI workflows,
   labels, issue forms and runbooks.
 
+**The entry point is one command.** Install the kit, open your project in Claude Code, and run
+`/settling-agreements`. It reads what the project already does, proposes the project's agreements, and asks only about
+the gaps. You approve the result as a pull request.
+
 The practices come from one such engagement, reviewed three times without changing anything, from mid-delivery to its
 close.
 [`docs/ai-sdlc/evidence.md`](docs/ai-sdlc/evidence.md) summarises what was measured; the research behind it is
@@ -25,26 +29,27 @@ private. Terms used throughout are explained under [Terms](#terms).
 
 ## Start here
 
-1. Check the [prerequisites](#prerequisites).
-2. Clone the kit and work from inside the checkout, where every `just` recipe runs:
-   `git clone https://github.com/ricoms/praxis-kit.git && cd praxis-kit`.
-3. Skim [`CONSTITUTION.md`](CONSTITUTION.md): what the team is after, the safety floor, the stages and the agreements.
-4. Install the kit's rules and skills (see [Install](#install)).
+1. Check the [prerequisites](#prerequisites), then clone the kit and work from inside the checkout, where every `just`
+   recipe runs: `git clone https://github.com/ricoms/praxis-kit.git && cd praxis-kit`.
+2. Install the kit's rules and skills (see [Install](#install)).
    - `just install-only minimal` installs into `~/.claude`, so the rules load in every Claude Code session on the
      machine. Add profiles from the table under Install as you need them, or run `just install` for all of them.
    - To leave the rest of the machine untouched, `just install-project /path/to/project minimal` installs into that
      project's `.claude/` only.
    - A `CLAUDE.md` already at the target that is not one of the kit's links is left alone and reported as `SKIP`.
      The kit's rules then do not load there until you move that file aside or merge it.
-5. For a new project, apply the [template](template/README.md) now, before settling anything. It renders
-   `.claude/CLAUDE.md` and `docs/agreements.md`, and copier overwrites both, so anything settled earlier is lost. The
-   rendered `.claude/CLAUDE.md` extends the global `~/.claude/CLAUDE.md`, so a project made from the template needs the
-   global install from step 4. Run `just install-project` into it after `copier copy`, never before: copier will not
-   write over the files the install links. Skip this step for an existing project you are not templating.
-6. In your project, ask your agent to settle the project's agreements. It runs the `settling-agreements` skill,
-   which reads what the project already does, starts from any `agreements.md` you bring from another project or your
-   team, and asks only what it cannot work out.
-7. Approve the resulting `docs/agreements.md`. A team reads it as a PR first, then meets only on the rows someone contests.
+3. Open your project in Claude Code and run `/settling-agreements`. It reads what the project already does, starts from
+   any `agreements.md` you bring from another project or your team, and asks only what it cannot work out.
+4. Approve the resulting `docs/agreements.md`. A team reads it as a PR first, then meets only on the rows someone contests.
+
+**Starting a new project?** Apply the [template](template/README.md) before step 3. It renders `.claude/CLAUDE.md` and
+`docs/agreements.md`, and copier overwrites both, so anything settled earlier is lost. The rendered
+`.claude/CLAUDE.md` extends the global `~/.claude/CLAUDE.md`, so a project made from the template needs the global
+install. Run `just install-project` into it after `copier copy`, never before: copier will not write over the files the
+install links.
+
+**Want the background first?** Skim [`CONSTITUTION.md`](CONSTITUTION.md): what the team is after, the safety floor,
+the stages and the agreements that `/settling-agreements` settles.
 
 ## What is here
 
