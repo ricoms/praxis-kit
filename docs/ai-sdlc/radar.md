@@ -40,7 +40,7 @@ alternatives are in [decision points](decision-points.md).
 | Adopt | copier | Renders the project template; answers are kept for updates | [`copier.yml`](../../copier.yml) |
 | Adopt | Dependabot | One PR per dependency after the cooldown; security updates skip it | [`template/src/.github/dependabot.yml.jinja`](../../template/src/.github/dependabot.yml.jinja) |
 | Adopt | gitleaks | Secret scan over full history in CI and at commit | [`template/src/.github/workflows/ci.yml.jinja`](../../template/src/.github/workflows/ci.yml.jinja) |
-| Adopt | actionlint + shellcheck | The kit lints every rendered workflow and script | [`scripts/check_template.py`](../../scripts/check_template.py) |
+| Adopt | actionlint + shellcheck | The kit lints every rendered workflow and script | [`src/hugin/check_template.py`](../../src/hugin/check_template.py) |
 | Adopt | just | One task runner for install, test, lint and smoke | [`template/src/justfile.jinja`](../../template/src/justfile.jinja) |
 | Trial | Google Cloud Deploy | More than two environments, canaries or a release console outside GitHub | [`docs/ai-sdlc/patterns/release-promotion.md`](patterns/release-promotion.md) |
 | Trial | Binary Authorization attestations | When signed provenance must be enforced at deploy | [`docs/ai-sdlc/decision-points.md`](decision-points.md) |

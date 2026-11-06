@@ -43,4 +43,4 @@ jobs:
           echo "${ACTIONLINT_SHA256}  ${tarball}" | sha256sum -c -
           tar -xzf "$tarball" actionlint
           sudo mv actionlint /usr/local/bin/
-      - run: uv run python scripts/check_template.py
+      - run: uv run hugin check-template

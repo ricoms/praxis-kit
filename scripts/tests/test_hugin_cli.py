@@ -95,6 +95,11 @@ class KitRoot(unittest.TestCase):
             cli.main(["velocity", "--root", "/nonexistent", "--owner", "o", "--project", "1", "--capacity", "5"])
         self.assertEqual(raised.exception.code, 2)
 
+    def test_check_template_refuses_a_root_that_is_not_the_kit(self):
+        with self.assertRaises(SystemExit) as raised:
+            cli.main(["check-template", "--root", str(self.base)])
+        self.assertIn("not a praxis-kit checkout", str(raised.exception))
+
     def test_radar_rejects_unknown_arguments(self):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as raised:
             cli.main(["radar", "--root", str(self.kit), "check", "--owner", "o"])
