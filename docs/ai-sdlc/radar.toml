@@ -169,7 +169,7 @@ name = "actionlint + shellcheck"
 quadrant = "tools"
 ring = "adopt"
 why = "The kit lints every rendered workflow and script"
-ref = "scripts/check_template.py"
+ref = "src/hugin/check_template.py"
 evidence = "actionlint"
 
 [[blip]]

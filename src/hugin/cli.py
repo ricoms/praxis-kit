@@ -1,7 +1,7 @@
 import argparse
 from importlib.metadata import version
 
-from hugin import kit, profiles, radar, snapshot, velocity
+from hugin import check_template, kit, profiles, radar, snapshot, velocity
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -21,6 +21,10 @@ def build_parser() -> argparse.ArgumentParser:
         "profiles", help="resolve and install the kit's profiles, and check the kit",
         description=profiles.__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     profiles.add_arguments(profiles_cmd)
+    template_cmd = commands.add_parser(
+        "check-template", help="render the copier template's variants and check what the kit claims about them",
+        description=check_template.__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    kit.add_root_argument(template_cmd)
     return parser
 
 
@@ -34,4 +38,6 @@ def main(argv: list[str] | None = None) -> int:
         return snapshot.run(args)
     if args.command == "profiles":
         return profiles.run(args)
+    if args.command == "check-template":
+        return check_template.run(kit.root(args.root))
     raise AssertionError(f"hugin: the {args.command!r} command has no handler in cli.main")

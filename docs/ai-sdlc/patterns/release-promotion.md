@@ -15,7 +15,7 @@ deploy job is the one job bound to the GitHub environment, so each run leaves on
 final promotes only when the commit's latest `dev` deployment succeeded, and stops otherwise.
 
 Pick it when: the team lives in GitHub, there are one or two environments, and nothing else orchestrates releases.
-Costs nothing beyond Actions minutes. The promotion logic is ours to maintain (tested by `scripts/check_template.py`).
+Costs nothing beyond Actions minutes. The promotion logic is ours to maintain (tested by `hugin check-template`).
 
 ## Option — Google Cloud Deploy
 

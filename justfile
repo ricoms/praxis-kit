@@ -7,28 +7,9 @@ profiles := "uv run --no-dev --project " + repo_dir + " hugin profiles --root " 
 
 python := env_var_or_default("PYTHON", "uv run python")
 
-# Scripts not yet moved into src/hugin; mypy --strict counts their errors against scripts/mypy-baseline.txt
-unmoved := "scripts/check_template.py"
-
 # List recipes
 default:
     @just --list
-
-# the template's doors.py needs tomllib, stdlib only from 3.11 — fails with the version found, not a traceback
-check-python:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    {{python}} <<'EOF'
-    import sys
-    need = (3, 11)
-    if sys.version_info[:2] < need:
-        have = "%d.%d.%d" % sys.version_info[:3]
-        sys.stderr.write(
-            "error: {{python}} is %s, but this recipe needs Python >= %d.%d (the template's doors.py imports tomllib)\n"
-            % (have, *need)
-        )
-        sys.exit(1)
-    EOF
 
 # ── Profile management ─────────────────────────────────────────
 
@@ -49,38 +30,25 @@ budget:
     @{{profiles}} budget
 
 # Render the copier template variants; lint them; check ruleset vs ci.yml, practices and constitution claims
-check-template: check-python
-    {{python}} scripts/check_template.py
+check-template:
+    uv run hugin check-template
 
-# Fixture tests for the kit's scripts (scripts/tests)
+# Fixture tests for hugin's commands (scripts/tests)
 test:
-    {{python}} -m unittest discover -s scripts/tests
+    uv run python -m unittest discover -s scripts/tests
 
-# mypy --strict: a gate on src/hugin, and a ratchet on the unmoved scripts whose error count may only fall
+# mypy --strict on src/hugin
 typecheck:
-    #!/usr/bin/env bash
-    set -euo pipefail
     uv run mypy
-    baseline=$(cat scripts/mypy-baseline.txt)
-    found=$({ uv run mypy --strict --python-version 3.13 {{unmoved}} 2>&1 || true; } | sed -n 's/^Found \([0-9]*\) error.*/\1/p')
-    found=${found:-0}
-    if (( found > baseline )); then
-        echo "error: the unmoved scripts have $found mypy --strict errors, above the baseline of $baseline in scripts/mypy-baseline.txt" >&2
-        exit 1
-    fi
-    if (( found < baseline )); then
-        echo "error: the unmoved scripts now have $found mypy --strict errors; lower scripts/mypy-baseline.txt from $baseline to $found" >&2
-        exit 1
-    fi
 
 # Everything CI runs (.github/workflows/ci.yml), in the same order; run it before every push
-check: check-python
+check:
     {{profiles}} validate
     {{profiles}} budget
     uv run hugin radar check
-    {{python}} -m unittest discover -s scripts/tests
+    uv run python -m unittest discover -s scripts/tests
     {{just_executable()}} --justfile {{justfile()}} typecheck
-    {{python}} scripts/check_template.py
+    uv run hugin check-template
 
 # ── References ─────────────────────────────────────────────────
 

@@ -15,8 +15,8 @@ just list-profiles              # profiles + descriptions
 just resolve PROFILE             # merged artifact set after extends chain
 just validate                    # every artifact claimed by >=1 profile, agent tool grants cover what their skill invokes, description length lint
 just check-template              # render template variants, actionlint + shellcheck, ruleset vs ci.yml, practices and constitution claims
-just test                        # fixture tests for the kit's scripts (scripts/tests)
-just typecheck                   # mypy --strict: a gate on src/hugin, a ratchet on unmoved scripts (scripts/mypy-baseline.txt)
+just test                        # fixture tests for hugin's commands (scripts/tests)
+just typecheck                   # mypy --strict on src/hugin
 just check                       # everything CI runs, in order: validate, budget, radar check, test, typecheck, check-template; run before every push
 just budget                      # always-on byte total (CLAUDE.md + rules + skill frontmatter descriptions) vs BUDGET_LIMIT ratchet in src/hugin/profiles.py
 just doctor                      # two-way drift: repo artifacts vs installed ~/.claude tree
@@ -31,7 +31,7 @@ just docs-index                  # index CONSTITUTION.md, docs/references and do
 
 CI (`.github/workflows/ci.yml`) runs `validate`, `budget`, the radar check, `test`, `typecheck` and `check-template` on every push/PR to `main`; `just check` runs the same six locally. Every recipe runs Python through `uv run`, which provides 3.13 from the root `pyproject.toml` and `uv.lock`.
 
-`hugin` (ADR 0001, `docs/adr/0001-kit-tooling-hugin.md`) is the kit's Python package, in `src/hugin/`, run as `uv run hugin`. The scripts under `scripts/` and `claude/skills/*/scripts/` move into it one at a time; until each moves, `just typecheck` holds its `mypy --strict` errors to the baseline. `scripts/tests` holds the fixture tests for `hugin`'s commands.
+`hugin` (ADR 0001, `docs/adr/0001-kit-tooling-hugin.md`) is the kit's Python package, in `src/hugin/`, run as `uv run hugin`. `just typecheck` runs `mypy --strict` on all of `src/hugin` as a gate. `scripts/tests` holds the fixture tests for `hugin`'s commands.
 
 Manual `resolve`/single-artifact checks: `uv run hugin profiles <command>` directly (`--help` lists every command). `uv run hugin profiles --kit DIR <command>` runs any command against another kit with the same `profiles/` + `claude/` layout, such as a personal kit installed on top of this one; only this repo installs `CLAUDE.md` and `CONSTITUTION.md`.
 

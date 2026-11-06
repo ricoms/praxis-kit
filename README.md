@@ -82,9 +82,9 @@ Nothing here is specific to one person. A person's own tooling lives in their ow
 ## Install
 
 The kit's tooling runs through [`uv`](https://docs.astral.sh/uv/), which provides Python 3.13 itself when the machine
-lacks it, so the system Python does not matter. Every `just` recipe runs its scripts with `uv run python`, and `hugin`,
-the kit's command (ADR 0001, `docs/adr/0001-kit-tooling-hugin.md`), runs as `uv run hugin`. Set `PYTHON` to run the
-recipes with another interpreter instead.
+lacks it, so the system Python does not matter. `hugin`, the kit's command (ADR 0001,
+`docs/adr/0001-kit-tooling-hugin.md`), runs as `uv run hugin`, and its tests run with `uv run python`. The
+project-registry recipes also run with `uv run python`; set `PYTHON` to run them with another interpreter instead.
 
 Files are **symlinked**, not copied, from this repository into `~/.claude/` or a project's `.claude/`. Editing a file
 here changes it everywhere it is linked. A local file that is not a symlink is never overwritten.
@@ -118,8 +118,8 @@ CI runs these six on every push and pull request to `main`, and `just check` run
 just validate             # every artifact belongs to a profile; agent tool grants cover their skills; spec-kit gates cover every practice
 just budget               # always-on bytes (kernel + rules + skill descriptions) against BUDGET_LIMIT, a ratchet that only goes down
 uv run hugin radar check  # each radar entry's backing file still says what the entry claims
-just test                 # fixture tests for the kit's scripts, under scripts/tests
-just typecheck            # mypy --strict: a gate on src/hugin, a ratchet on the scripts not yet moved into it
+just test                 # fixture tests for hugin's commands, under scripts/tests
+just typecheck            # mypy --strict on src/hugin, as a gate
 just check-template       # renders the template's variants and checks what the practices claim about it
 ```
 

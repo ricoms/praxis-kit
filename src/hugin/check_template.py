@@ -1,10 +1,7 @@
 """Render the copier template in several variants and check what the kit claims about it.
 
-Usage: python3 scripts/check_template.py
 Needs copier, uvx, actionlint and shellcheck on PATH, and Docker for the bash 3.2 run.
 """
-
-from __future__ import annotations
 
 import json
 import os
@@ -17,9 +14,8 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-PRACTICES = ROOT / "docs" / "ai-sdlc" / "practices.md"
-SKILLS = ROOT / "claude" / "skills"
+PRACTICES = Path("docs") / "ai-sdlc" / "practices.md"
+SKILLS = Path("claude") / "skills"
 ANSWERS_FILE = ".copier-answers.praxis-kit.yml"
 
 BASE = {"project_name": "Demo App", "description": "demo", "tenancy_mode": "single-tenant", "stage": "build"}
@@ -351,12 +347,12 @@ def deploy_rollback_behaves(project: Path) -> list[str]:
             ]
             for name, env, expected in plan_cases:
                 out.write_text("")
-                code = run(plan, **{"IMAGE_REPOSITORY": path, "SHA": "abc123", "DISPATCH_ENVIRONMENT": "", "ROLLBACK": "", **env})
+                exit_code = run(plan, **{"IMAGE_REPOSITORY": path, "SHA": "abc123", "DISPATCH_ENVIRONMENT": "", "ROLLBACK": "", **env})
                 got = set(out.read_text().split())
-                if expected is None and code == 0:
+                if expected is None and exit_code == 0:
                     errors.append(f"release plan: {name} went ahead ({sorted(got)}) instead of stopping")
-                elif expected is not None and (code != 0 or got != expected):
-                    errors.append(f"release plan: {name} gave {sorted(got)} (exit {code}), expected {sorted(expected)}")
+                elif expected is not None and (exit_code != 0 or got != expected):
+                    errors.append(f"release plan: {name} gave {sorted(got)} (exit {exit_code}), expected {sorted(expected)}")
             reuse = workflow_step_script(workflow, "Reuse this commit's image if it exists")
             for name, env, expected_out, should_pass in [
                 ("existing image", image, f"image={path}@sha256:abc", True),
@@ -364,9 +360,9 @@ def deploy_rollback_behaves(project: Path) -> list[str]:
                 ("registry error", {"FAKE_DESCRIBE_DENIED": "1"}, "", False),
             ]:
                 out.write_text("")
-                code = run(reuse, **{"IMAGE_REPOSITORY": path, "SHA": "abc123", **env})
-                if (code == 0) != should_pass or out.read_text().strip() != expected_out:
-                    errors.append(f"release build: reuse with {name} gave {out.read_text().strip()!r} (exit {code})")
+                exit_code = run(reuse, **{"IMAGE_REPOSITORY": path, "SHA": "abc123", **env})
+                if (exit_code == 0) != should_pass or out.read_text().strip() != expected_out:
+                    errors.append(f"release build: reuse with {name} gave {out.read_text().strip()!r} (exit {exit_code})")
             digest_cases = [("existing", image, 0, "sha256:abc"), ("missing", {}, 2, ""),
                             ("registry error", {"FAKE_DESCRIBE_DENIED": "1"}, 1, ""),
                             ("missing credential helper", {"FAKE_NO_CRED_HELPER": "1"}, 1, "")]
@@ -502,9 +498,9 @@ def enforcement_claims(text: str) -> list[tuple[str, str]]:
     return claims
 
 
-def practices_claims_resolve(project: Path) -> list[str]:
+def practices_claims_resolve(root: Path, project: Path) -> list[str]:
     errors = []
-    for article, segment in enforcement_claims(PRACTICES.read_text()):
+    for article, segment in enforcement_claims((root / PRACTICES).read_text()):
         tag = re.match(r"^`(\w+)`", segment)
         if not tag or tag.group(1) not in CHECKED_TAGS or "(planned)" in segment:
             continue
@@ -512,16 +508,17 @@ def practices_claims_resolve(project: Path) -> list[str]:
         if not refs:
             errors.append(f"Art. {article}: `{tag.group(1)}` claim names no file or skill: {segment}")
         for ref in refs:
-            target = SKILLS / ref if tag.group(1) == "skill" else project / ref
+            target = root / SKILLS / ref if tag.group(1) == "skill" else project / ref
             if not target.exists():
                 errors.append(f"Art. {article}: {ref} does not exist ({tag.group(1)})")
     return errors
 
 
-def practices_links_resolve() -> list[str]:
-    links = re.findall(r"\]\(([^)#]+)(?:#[^)]*)?\)", PRACTICES.read_text())
+def practices_links_resolve(root: Path) -> list[str]:
+    practices = root / PRACTICES
+    links = re.findall(r"\]\(([^)#]+)(?:#[^)]*)?\)", practices.read_text())
     return [f"practices.md links to missing {link}" for link in links
-            if "://" not in link and not (PRACTICES.parent / link).exists()]
+            if "://" not in link and not (practices.parent / link).exists()]
 
 
 def git(cwd: Path, *args: str) -> str:
@@ -529,12 +526,12 @@ def git(cwd: Path, *args: str) -> str:
                            *args], cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
 
 
-def kit_repo(dest: Path) -> Path:
+def kit_repo(root: Path, dest: Path) -> Path:
     """A git copy of copier.yml and template/: copier versions a template only from a git repo's root."""
     dest.mkdir()
     for name in ("copier.yml", ".gitignore"):
-        shutil.copy2(ROOT / name, dest / name)
-    shutil.copytree(ROOT / "template", dest / "template")
+        shutil.copy2(root / name, dest / name)
+    shutil.copytree(root / "template", dest / "template")
     git(dest, "init", "-q")
     git(dest, "add", "-A")
     git(dest, "commit", "-qm", "kit")
@@ -601,11 +598,11 @@ def declarations_rendered(project: Path) -> list[str]:
             if f"**`{BASE[key]}`**" not in claude_md]
 
 
-def agreements_cover_constitution(project: Path) -> list[str]:
+def agreements_cover_constitution(root: Path, project: Path) -> list[str]:
     agreements = project / "docs" / "agreements.md"
     if not agreements.exists():
         return ["docs/agreements.md was not rendered"]
-    text = (ROOT / "CONSTITUTION.md").read_text()
+    text = (root / "CONSTITUTION.md").read_text()
     start, end = text.find("### Decisions every team settles"), text.find("## 6.")
     if start < 0 or end < start:
         return ["CONSTITUTION.md: cannot find the 'Decisions every team settles' list before section 6"]
@@ -688,11 +685,11 @@ def slots_fail_until_written(project: Path) -> list[str]:
     return errors
 
 
-def labels_carry_kinds(project: Path) -> list[str]:
+def labels_carry_kinds(root: Path, project: Path) -> list[str]:
     labels = project / ".github" / "labels.tsv"
     if not labels.exists():
         return []
-    rule = (ROOT / "claude" / "rules" / "engineering" / "labelling-issues.md").read_text()
+    rule = (root / "claude" / "rules" / "engineering" / "labelling-issues.md").read_text()
     kind_line = next((line for line in rule.splitlines() if "gets a **kind**" in line), "")
     kinds = re.findall(r"`([a-z]+)`", kind_line)
     if not kinds:
@@ -719,10 +716,10 @@ def runbooks_indexed(project: Path) -> list[str]:
                      if not (runbooks / link).exists()]
 
 
-def main() -> int:
+def run(root: Path) -> int:
     failures: list[str] = []
     with tempfile.TemporaryDirectory() as tmp:
-        src = kit_repo(Path(tmp) / "kit")
+        src = kit_repo(root, Path(tmp) / "kit")
         failures += declarations_required(src, Path(tmp))
         update_errors = update_round_trip(src, Path(tmp))
         failures += update_errors
@@ -737,17 +734,13 @@ def main() -> int:
             errors = lint(project) + required_checks_match_ci(project) + env_files_source(project) + adr_lint_behaves(project)
             errors += dependabot_directories_exist(project) + slots_fail_until_written(project)
             errors += doors_classify_behaves(project) + smoke_script_behaves(project) + deploy_rollback_behaves(project)
-            errors += private_refs_behave(project) + declarations_rendered(project) + agreements_cover_constitution(project)
-            errors += runbooks_indexed(project) + labels_carry_kinds(project) + ci_slots_wired(project)
+            errors += private_refs_behave(project) + declarations_rendered(project) + agreements_cover_constitution(root, project)
+            errors += runbooks_indexed(project) + labels_carry_kinds(root, project) + ci_slots_wired(project)
             errors += scripts_run_on_bash_32(project) + precommit_passes(project)
             if name == PRACTICES_VARIANT:
-                errors += practices_claims_resolve(project) + practices_links_resolve()
+                errors += practices_claims_resolve(root, project) + practices_links_resolve(root)
             failures += [f"[{name}] {e}" for e in errors]
             print(f"{name}: {'FAIL' if errors else 'ok'}")
     for failure in failures:
         print(failure, file=sys.stderr)
     return 1 if failures else 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
