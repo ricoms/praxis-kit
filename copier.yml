@@ -119,6 +119,19 @@ release_workflow:
     release_workflow requires ci_target 'github-actions'.
     {% endif %}
 
+stack_decided:
+  type: bool
+  default: "{{ release_workflow or stage != 'explore' }}"
+  help: >-
+    The stack is decided: its ADR is accepted, or an existing codebase already runs on it. Until then CI runs only the
+    checks that need no stack (the secrets scan, the ADR lint and, on a team, the private-reference check), so a fresh
+    render passes CI. Turning it on renders CI's `checks` job, which runs `just ci` after .github/actions/toolchain.
+    Past explore, section 4 of the constitution asks for lint and tests, so the default is on.
+  validator: >-
+    {% if release_workflow and not stack_decided %}
+    release_workflow requires stack_decided: the release builds and tests the image with the stack's slots.
+    {% endif %}
+
 team_delivery:
   type: bool
   default: false

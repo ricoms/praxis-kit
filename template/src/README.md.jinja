@@ -9,8 +9,18 @@ just install
 just ci
 ```
 
-`just ci` runs the project's lint, test and audit recipes, which CI runs on every pull request. Until the project
-fills them in the justfile, each fails with "not configured".
+{% if stage == "explore" %}
+`just ci` runs `test`, the one recipe the `explore` stage asks for. Until the project writes it in the justfile, it
+fails with "not configured".
+{% else %}
+`just ci` runs the `lint`, `test` and `audit` recipes. Until the project writes them in the justfile, each fails with
+"not configured".
+{% endif %}
+{% if stack_decided %}
+CI runs `just ci` on every pull request.
+{% else %}
+CI starts running `just ci` once the stack is decided (`.claude/CLAUDE.md` § Stack).
+{% endif %}
 
 ## Stack
 

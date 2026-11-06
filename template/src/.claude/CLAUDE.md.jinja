@@ -54,6 +54,13 @@ To be defined: the languages, frameworks, database and deploy target, the users'
 its slots: `.github/actions/toolchain`, the justfile's `lint`, `test` and `audit`, `scripts/build-image.sh`{% if release_workflow %},
 `.github/actions/target-setup`, `scripts/deploy.sh` and, if it migrates a database, `scripts/migrate.sh`{% endif %}. Agents read
 the stack from here; a later change to it is an ADR.
+{% if not stack_decided %}
+
+Until the stack ADR is accepted, CI runs only the checks that need no stack. Once it is, fill the slots and run
+`copier update --trust --answers-file .copier-answers.praxis-kit.yml --data stack_decided=true`, which adds CI's
+`checks` job.{% if team_delivery %} Merge it, then run `scripts/repo/apply-ruleset.sh` as a repo admin so the ruleset
+requires `checks`.{% endif %}
+{% endif %}
 
 ## Modules
 
@@ -92,6 +99,7 @@ adjustment. Read that file before acting on a working agreement.
 ## Operational notes
 
 - CI: `{{ ci_target }}`
+- Stack decided: {{ "yes, CI runs `just ci`" if stack_decided else "not yet, CI runs only the checks that need no stack" }}
 - Release workflow: {{ "yes, with slots to fill" if release_workflow else "not rendered" }}
 
 ## Status

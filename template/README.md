@@ -25,8 +25,8 @@ there, so anyone with read access to the kit can update the project. A local che
 given, and the update would then work only on the machine that has it.
 
 The answers go to `.copier-answers.praxis-kit.yml`, so a stack template applied afterwards can keep its own answers
-file; every update names it with `--answers-file`. praxis-kit has no release tags yet, so an update takes the latest
-commit; once tags exist, it takes the latest tag. To change an answer later, such as turning on `release_workflow`,
+file; every update names it with `--answers-file`. An update takes praxis-kit's latest release tag, so a template change
+reaches projects once it is released. To change an answer later, such as turning on `release_workflow`,
 pass `--data release_workflow=true` to the update.
 
 ## Hand-over
@@ -44,8 +44,9 @@ rendered project owes no notice for them.
 - `.copier-answers.praxis-kit.yml`, the answers and template commit that `copier update` starts from.
 - `docs/agreements.md`, the ten decisions every team settles, with proposed defaults; `docs/slo.md`, `docs/adr/`,
   and the runbooks: CI/CD troubleshooting, the runbook index, incidents, `rotations.log`.
-- `.github/workflows/ci.yml`: `checks` runs `just ci` after the toolchain action, `image` builds with
-  `scripts/build-image.sh` and smoke-checks the image, plus the ADR lint and gitleaks.
+- `.github/workflows/ci.yml`: the ADR lint and gitleaks always. With `stack_decided`, `checks` runs `just ci` after
+  the toolchain action. With `release_workflow`, `image` builds with `scripts/build-image.sh` and smoke-checks the
+  image.
 - `justfile` with the recipe contract (`ci`, `lint`, `test`, `audit`, `secrets`, `security-scan`, `smoke`), and a stack-free
   two-stage `.pre-commit-config.yaml` and `dependabot.yml`.
 - With `release_workflow`: `.github/workflows/release.yml` (build once, deploy to dev on a pre-release, promote the
@@ -55,12 +56,56 @@ rendered project owes no notice for them.
   the door check, CODEOWNERS, the PR template, a `main` ruleset with its apply script, the private-reference check,
   `docs/raci.md`, and the board, review-and-merge, security-testing and hand-over runbooks.
 
+## How CI grows
+
+CI asks only for what the project can already pass, so a fresh render is green on its first push. It grows in three
+steps, each triggered by a fact:
+
+1. **At render, any stage.** CI runs the checks that need no stack: gitleaks, the ADR lint and, with
+   `team_delivery`, the private-reference check.
+2. **When the stack is decided.** That means its ADR is accepted, or an existing codebase already runs on it. Fill the
+   toolchain, `lint`, `test` and `audit` slots, then pass `--data stack_decided=true` to the update. CI's `checks` job
+   runs `just ci`, which runs what the stage asks for: `test` in `explore`, and `lint`, `test` and `audit` after it.
+   With `team_delivery`, merge the update and then run `scripts/repo/apply-ruleset.sh` as a repo admin, so the
+   ruleset requires `checks` too. The default is already on past `explore`.
+3. **When there is a deploy target, or the project leaves `explore`.** Pass `--data release_workflow=true` and settle
+   the deployment, rollback and hotfix rows in `docs/agreements.md`. `CONSTITUTION.md` §5 asks for them before the
+   first change reaches production, and explore code never reaches production.
+
+Whether the stack is decided depends on how the project starts. `settling-agreements` works this out in its first
+step:
+
+```mermaid
+flowchart TD
+    start([Adopt the kit]) --> situation{What is the project?}
+
+    situation -->|greenfield| named{Do the developers<br/>know the stack?}
+    named -->|yes| adr[Stack ADR, accepted by the decider]
+    named -->|they want help| propose[Agent proposes options from<br/>the radar and decision points] --> adr
+    named -->|not yet| undecided["Render with stack_decided=false<br/>CI: gitleaks, ADR lint, private-refs<br/>green on the first push"]
+    undecided -. later .-> adr
+
+    situation -->|brownfield, stack fixed| evidence[Read the stack from the repo:<br/>lockfiles, CI, Dockerfile]
+    situation -->|brownfield, room to expand| evidence
+    evidence --> record[ADR that records the existing stack]
+
+    adr --> decided["stack_decided=true<br/>fill toolchain, lint, test, audit<br/>CI runs what the stage requires"]
+    record --> decided
+
+    decided --> expand{Expansion proposed?<br/>new language, datastore, service}
+    expand -->|yes| expadr[Proposed ADR, drafted from<br/>what the repo already uses] --> accept{Decider accepts?}
+    accept -->|yes| grow[Add to toolchain and slots] --> decided
+    accept -->|no| decided
+    expand -->|no| deploy{Deploy target exists,<br/>or the project leaves explore?}
+    deploy -->|yes| release["copier update<br/>--data release_workflow=true<br/>settle deployment, rollback, hotfix"]
+```
+
 ## The slots a project fills
 
 | Slot | Called by | What it does |
 |---|---|---|
-| `.github/actions/toolchain` | CI's `checks` job | Installs the stack's tools; `just` is already there |
-| `just lint`, `just test`, `just audit` | `just ci` | The project's static checks, tests and dependency audits |
+| `.github/actions/toolchain` | CI's `checks` job, once `stack_decided` | Installs the stack's tools; `just` is already there |
+| `just lint`, `just test`, `just audit` | `just ci`, which runs only `test` in `explore` | The project's static checks, tests and dependency audits |
 | `scripts/build-image.sh TAG` | CI's `image` job, the release's `build` job | Builds the deployable image, which must listen on `$PORT` and answer `GET /health` |
 | `IMAGE_REPOSITORY` repo variable | `release.yml` | Where images are pushed |
 | `.github/actions/target-setup` | `release.yml` | Logs in to the registry and the target, from repository variables |

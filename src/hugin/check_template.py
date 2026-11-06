@@ -18,9 +18,12 @@ PRACTICES = Path("docs") / "ai-sdlc" / "practices.md"
 SKILLS = Path("claude") / "skills"
 ANSWERS_FILE = ".copier-answers.praxis-kit.yml"
 
-BASE = {"project_name": "Demo App", "description": "demo", "tenancy_mode": "single-tenant", "stage": "build"}
+BASE = {"project_name": "Demo App", "description": "demo", "tenancy_mode": "single-tenant", "stage": "build",
+        "stack_decided": "true"}
 VARIANTS: dict[str, dict[str, str]] = {
-    "plain": {},
+    "explore": {"stage": "explore", "stack_decided": "false", "team_delivery": "true", "code_owners": "@acme/devs"},
+    "explore-stack": {"stage": "explore"},
+    "plain": {"stack_decided": "false"},
     "release": {"release_workflow": "true"},
     "team": {"team_delivery": "true", "code_owners": "@acme/devs"},
     "team-release": {
@@ -31,6 +34,9 @@ VARIANTS: dict[str, dict[str, str]] = {
     },
 }
 PRACTICES_VARIANT = "team-release"
+STACK_FREE_JOBS = {"adr", "gitleaks", "private-refs"}
+CI_RECIPES = {"explore": "test"}
+CI_RECIPES_AFTER_EXPLORE = "lint test audit"
 CHECKED_TAGS = {"template", "check", "skill"}
 
 
@@ -542,7 +548,7 @@ def update_round_trip(src: Path, tmp: Path) -> list[str]:
     project = tmp / "update"
     head = git(src, "rev-parse", "HEAD")
     try:
-        render(src, project, {})
+        render(src, project, {"stack_decided": "false"})
         answers = project / ANSWERS_FILE
         if not answers.exists():
             return [f"update: no {ANSWERS_FILE} was rendered"]
@@ -561,7 +567,8 @@ def update_round_trip(src: Path, tmp: Path) -> list[str]:
         git(src, "commit", "-qam", "template change")
         result = subprocess.run(["copier", "update", "--trust", "--defaults", "--quiet", "--vcs-ref", "HEAD",
                                  "--answers-file", ANSWERS_FILE,
-                                 "--data", "release_workflow=true"], cwd=project, capture_output=True, text=True)
+                                 "--data", "stack_decided=true", "--data", "release_workflow=true"],
+                                cwd=project, capture_output=True, text=True)
     except subprocess.CalledProcessError as exc:
         return [f"update: {' '.join(map(str, exc.cmd))} failed:\n{(exc.stderr or '').strip()}"]
     finally:
@@ -574,7 +581,30 @@ def update_round_trip(src: Path, tmp: Path) -> list[str]:
         errors.append("update: the project's own edit was lost")
     if not (project / ".github" / "workflows" / "release.yml").exists():
         errors.append("update: changing release_workflow on update did not render release.yml")
+    if "checks" not in ci_job_ids(project / ".github" / "workflows" / "ci.yml"):
+        errors.append("update: changing stack_decided on update did not render CI's checks job")
     return errors
+
+
+def earlier_release_keeps_stack(src: Path, tmp: Path) -> list[str]:
+    """A project rendered before stack_decided existed must not lose its release workflow on `update --defaults`."""
+    project = tmp / "earlier-release"
+    render(src, project, {"release_workflow": "true"})
+    answers = project / ANSWERS_FILE
+    answers.write_text("".join(line for line in answers.read_text().splitlines(keepends=True)
+                               if not line.startswith("stack_decided:")))
+    git(project, "init", "-q")
+    git(project, "add", "-A")
+    git(project, "commit", "-qm", "rendered before stack_decided")
+    result = subprocess.run(["copier", "update", "--trust", "--defaults", "--quiet", "--vcs-ref", "HEAD",
+                             "--answers-file", ANSWERS_FILE], cwd=project, capture_output=True, text=True)
+    if result.returncode != 0:
+        return [f"earlier release project: copier update failed:\n{result.stderr.strip()}"]
+    if not (project / ".github" / "workflows" / "release.yml").exists():
+        return ["earlier release project: update --defaults removed release.yml"]
+    if "stack_decided: true" not in answers.read_text():
+        return ["earlier release project: update --defaults did not record stack_decided: true"]
+    return []
 
 
 def declarations_required(src: Path, tmp: Path) -> list[str]:
@@ -592,10 +622,22 @@ def declarations_required(src: Path, tmp: Path) -> list[str]:
     return errors
 
 
-def declarations_rendered(project: Path) -> list[str]:
+def release_needs_stack(src: Path, tmp: Path) -> list[str]:
+    args = ["copier", "copy", "--trust", "--defaults", "--quiet"]
+    for key, value in {**BASE, "stack_decided": "false", "release_workflow": "true"}.items():
+        args += ["--data", f"{key}={value}"]
+    result = subprocess.run([*args, str(src), str(tmp / "release-no-stack")], capture_output=True, text=True)
+    if result.returncode == 0:
+        return ["rendering release_workflow without stack_decided succeeded; the release needs the stack's slots"]
+    if "release_workflow requires stack_decided" not in result.stderr:
+        return [f"rendering release_workflow without stack_decided failed for another reason:\n{result.stderr.strip()}"]
+    return []
+
+
+def declarations_rendered(project: Path, answers: dict[str, str]) -> list[str]:
     claude_md = (project / ".claude" / "CLAUDE.md").read_text()
-    return [f".claude/CLAUDE.md does not declare {key} `{BASE[key]}`" for key in ("tenancy_mode", "stage")
-            if f"**`{BASE[key]}`**" not in claude_md]
+    return [f".claude/CLAUDE.md does not declare {key} `{answers[key]}`" for key in ("tenancy_mode", "stage")
+            if f"**`{answers[key]}`**" not in claude_md]
 
 
 def agreements_cover_constitution(root: Path, project: Path) -> list[str]:
@@ -639,6 +681,23 @@ def _job_blocks(workflow: Path) -> dict[str, str]:
         elif name and not line.startswith(" "):
             name = None
     return blocks
+
+
+def ci_follows_stage(project: Path, stage: str) -> list[str]:
+    body = re.search(r"^ci:\n((?:    .*\n)+)", (project / "justfile").read_text(), re.M)
+    loop = re.search(r"for recipe in (.*); do", body.group(1)) if body else None
+    expected = CI_RECIPES.get(stage, CI_RECIPES_AFTER_EXPLORE)
+    if not loop or loop.group(1) != expected:
+        return [f"justfile: `just ci` at {stage} runs {loop.group(1) if loop else 'nothing'!r}, expected {expected!r}"]
+    return []
+
+
+def ci_needs_no_stack(project: Path) -> list[str]:
+    ci = project / ".github" / "workflows" / "ci.yml"
+    if not ci.exists():
+        return []
+    return [f"ci.yml: renders the {job} job before the stack is decided, so a fresh render cannot pass CI"
+            for job in sorted(ci_job_ids(ci) - STACK_FREE_JOBS)]
 
 
 def ci_slots_wired(project: Path) -> list[str]:
@@ -720,7 +779,8 @@ def run(root: Path) -> int:
     failures: list[str] = []
     with tempfile.TemporaryDirectory() as tmp:
         src = kit_repo(root, Path(tmp) / "kit")
-        failures += declarations_required(src, Path(tmp))
+        failures += declarations_required(src, Path(tmp)) + release_needs_stack(src, Path(tmp))
+        failures += earlier_release_keeps_stack(src, Path(tmp))
         update_errors = update_round_trip(src, Path(tmp))
         failures += update_errors
         print(f"update: {'FAIL' if update_errors else 'ok'}")
@@ -734,8 +794,11 @@ def run(root: Path) -> int:
             errors = lint(project) + required_checks_match_ci(project) + env_files_source(project) + adr_lint_behaves(project)
             errors += dependabot_directories_exist(project) + slots_fail_until_written(project)
             errors += doors_classify_behaves(project) + smoke_script_behaves(project) + deploy_rollback_behaves(project)
-            errors += private_refs_behave(project) + declarations_rendered(project) + agreements_cover_constitution(root, project)
-            errors += runbooks_indexed(project) + labels_carry_kinds(root, project) + ci_slots_wired(project)
+            answers = {**BASE, **data}
+            errors += private_refs_behave(project) + declarations_rendered(project, answers)
+            errors += agreements_cover_constitution(root, project)
+            errors += runbooks_indexed(project) + labels_carry_kinds(root, project) + ci_follows_stage(project, answers["stage"])
+            errors += ci_slots_wired(project) if answers["stack_decided"] == "true" else ci_needs_no_stack(project)
             errors += scripts_run_on_bash_32(project) + precommit_passes(project)
             if name == PRACTICES_VARIANT:
                 errors += practices_claims_resolve(root, project) + practices_links_resolve(root)

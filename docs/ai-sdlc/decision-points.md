@@ -12,7 +12,7 @@ project's CLAUDE.md or an ADR. The tools and techniques behind these choices, ad
 | Tenancy | none: you must choose | `multi-tenant`, `single-tenant`, `single-user` | always a deliberate choice; it decides every scoping rule | `tenancy_mode`; kernel `## Tenancy` |
 | Stage | none: you must choose | `explore`, `build`, `run`, `sustain` | always decided by facts: real data, promised availability, rate of change | `stage`; `CONSTITUTION.md` §4 |
 | Team delivery | off | on: labels, question form, board close-out, digest, door check, ruleset, CODEOWNERS | more than one developer, or a client relationship to coordinate | `team_delivery`; [team practices](practices.md) |
-| Release workflow | off | on: build once, deploy to dev on a pre-release, promote the same digest to prod, roll back through the pipeline; the project fills the registry, target-setup and deploy slots | the project deploys a container image to dev and prod | `release_workflow`; [template README](../../template/README.md) |
+| Release workflow | off | on: build once, deploy to dev on a pre-release, promote the same digest to prod, roll back through the pipeline; the project fills the registry, target-setup and deploy slots | the project deploys a container image to dev and prod, and its stack is decided (`stack_decided`) | `release_workflow`; [template README](../../template/README.md) |
 
 ## Decided in the team practices and patterns
 

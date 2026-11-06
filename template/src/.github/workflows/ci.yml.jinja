@@ -12,6 +12,7 @@ on:
         default: false
 
 jobs:
+{% if stack_decided %}
   # The project's checks live in `just ci`; the toolchain action installs what they need.
   checks:
     runs-on: ubuntu-latest
@@ -19,6 +20,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/toolchain
       - run: just ci
+{% endif %}
 {% if team_delivery %}
 
   private-refs:
