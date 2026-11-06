@@ -4,7 +4,7 @@ description: >-
   Settle a project's agreements: infer them from the repo, import an
   agreements.md preset, ask only the gaps. Use when adopting the kit in a new
   or brownfield project.
-allowed-tools: Read Grep Glob AskUserQuestion Bash(git log *) Bash(git show *) Bash(git tag *) Bash(gh pr list *) Bash(gh pr view *) Bash(gh release list *) Bash(gh run list *) Bash(gh api repos/*) Bash(gitleaks detect *)
+allowed-tools: Read Grep Glob AskUserQuestion Bash(git log *) Bash(git show *) Bash(git tag --sort=*) Bash(gh pr list *) Bash(gh pr view *) Bash(gh release list *) Bash(gh run list *) Bash(gh api repos/*/environments) Bash(gitleaks detect *)
 metadata:
   requires-tools: Write Edit Bash WebFetch
   tags:
