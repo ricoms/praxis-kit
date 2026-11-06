@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# praxis-kit installer — symlink-based, profile-driven.
+# praxis-kit installer — copies profiles into ~/.claude with a manifest.
 #
 # Default: install all profiles globally (~/.claude/).
 # Override: pass profile names as args, e.g. ./install.sh minimal security
@@ -31,7 +31,7 @@ ls ~/.claude/agents/*.md 2>/dev/null | wc -l | xargs -I{} echo "  {} agents"
 ls ~/.claude/commands/*.md 2>/dev/null | wc -l | xargs -I{} echo "  {} commands"
 echo ""
 echo "Next steps:"
-echo "  - Inspect with: just status"
+echo "  - Inspect with: just doctor"
 echo "  - List profiles: just list-profiles"
 echo "  - Per-project: just install-project /path/to/project security team-delivery"
 echo "  - Validate: just validate"

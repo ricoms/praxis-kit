@@ -60,10 +60,10 @@ cp ~/.claude/spec-kit/constitution.md .specify/memory/constitution.md
 
 Fill `.specify/memory/constitution.md`:
 
-- Replace `[PROJECT_NAME]`, `[STAGE]`, `[TENANCY]` and `[DATE]`. For `[COMMIT]`, run the command below; it fails if `~/.claude/CONSTITUTION.md` is not the installed symlink, and marks a checkout with uncommitted changes `-dirty`:
+- Replace `[PROJECT_NAME]`, `[STAGE]`, `[TENANCY]` and `[DATE]`. For `[COMMIT]`, run the command below. It prints the kit commit the installed copy came from, marked `-dirty` when that checkout had uncommitted changes, and fails if the kit is not installed:
 
   ```sh
-  src=$(readlink ~/.claude/CONSTITUTION.md) && git -C "$(dirname "$src")" describe --always --dirty
+  jq -er .commit ~/.claude/.kit-manifests/praxis-kit.json
   ```
 - Replace each `[COPY ...]` line with the text it names, **copied word for word with its line breaks**. Never summarise or reword: the check below fails on any line that is not in the source.
 - In the phase-gate table, keep only the rows for the practices you copied.

@@ -146,8 +146,8 @@ Run it only if the developer agrees:
 - **An ongoing or brownfield project:** render into a temporary directory, then merge file by file. Never run
   `copier copy --overwrite` on a project with its own README, justfile or workflows, because it replaces them with
   stubs.
-- In both cases, run `just install-project` after the copy, never before. `copier copy` refuses to write over the
-  `.claude/CLAUDE.md` symlink that the install creates.
+- In both cases, run `just install-project` after the copy. The install writes the kit's rules under `.claude/rules/`
+  and never touches the project's `.claude/CLAUDE.md`.
 
 **Write the agreements.** Fill `docs/agreements.md`, or create it with the template's structure when the developer
 declined the template:
@@ -159,10 +159,9 @@ declined the template:
 - **`## Gaps against the safety floor`.** One row per practice that breaks the floor: the rule it breaks, the owner
   and the date it will be fixed.
 
-Write the tenancy and stage declarations into the project's `.claude/CLAUDE.md`, in the form the template renders.
-If that file is a symlink into the kit, which `just install-project` creates when the template was declined, write
-them into the project's root `CLAUDE.md` instead. Never edit a symlinked file: it is the kit's, shared by every
-project.
+Write the tenancy and stage declarations into the project's `.claude/CLAUDE.md`, in the form the template renders,
+creating the file when the template was declined. Never edit a file the kit installed, listed in
+`.claude/.kit-manifests/praxis-kit.json`: the next install would keep the edit and stop updating that file.
 
 ## 7. Make it an agreement
 

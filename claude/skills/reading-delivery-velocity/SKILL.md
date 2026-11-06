@@ -22,8 +22,8 @@ uv run --no-dev --project <kit> hugin velocity --owner <org> --project <n> \
   --capacity <engineer-days per sprint> --target "<milestone>"
 ```
 
-`<kit>` is the praxis-kit checkout this skill is linked from: the resolved path of this skill's directory, three levels
-up. `uv` provides Python 3.13 there. Field names, the done status and today's date are flags (`--help`).
+`<kit>` is the praxis-kit checkout installed in `~/.claude`: the `kit` path in `~/.claude/.kit-manifests/praxis-kit.json`,
+where `~` stands for the home directory. A project's own manifest records no path, because each teammate's differs. `uv` provides Python 3.13 there. Field names, the done status and today's date are flags (`--help`).
 `--input items.json` reads a saved `gh project item-list <n> --owner <org> --format json --limit 5000` instead of
 calling `gh`.
 

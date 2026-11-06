@@ -1,18 +1,20 @@
-"""Profile resolver + symlink installer for praxis-kit, run as `hugin profiles`.
+"""Profile resolver + copy installer for praxis-kit, run as `hugin profiles`.
 
 Commands (add `--kit DIR` before the command to act on another kit with the same profiles/ + claude/ layout,
-such as a personal kit installed on top of this one; only this repo installs CLAUDE.md and CONSTITUTION.md, and a
-kit's profiles cannot extend this repo's profiles; an item whose name another kit already links is reported TAKEN
-and left alone):
+such as a personal kit installed on top of this one; only this repo installs the kernel and CONSTITUTION.md, and a
+kit's profiles cannot extend this repo's profiles; a file another kit's manifest owns is reported TAKEN and left
+alone):
   list                                List profiles + descriptions
-  install [PROFILE...]                Symlink profiles into ~/.claude/ (default: all)
-  install-project DIR PROFILE...      Symlink profiles into DIR/.claude/
+  install [--dry-run] [PROFILE...]    Copy profiles into ~/.claude/ (default: all), recording a manifest
+  install-project [--dry-run] DIR PROFILE...
+                                      Copy profiles into DIR/.claude/
+  uninstall [TARGET]                  Remove every unedited file this kit's manifest lists (default ~)
   validate                            Check every artifact belongs to >=1 profile, every agent's tool grant
                                        covers what its skill invokes (+ description lint warnings)
   budget [LIMIT]                      Sum always-on bytes (CLAUDE.md + rules + skill descriptions); fail over LIMIT
                                        (LIMIT is required with --kit: BUDGET_LIMIT ratchets this repo only)
   budget PROFILE                      Scope the same breakdown to one profile's resolved set (informational, no ratchet)
-  doctor [TARGET]                     Two-way drift check: repo vs TARGET/.claude (default ~)
+  doctor [TARGET]                     Compare TARGET/.claude (default ~) with this kit's manifest and sources
   resolve PROFILE                     Print merged set as JSON (for debugging)
 
 Profile JSON shape:
@@ -29,8 +31,10 @@ Profile JSON shape:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
-import os
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -86,35 +90,66 @@ def resolve(name: str, _seen: set[str] | None = None) -> dict[str, list[str]]:
     return merged
 
 
-def link_item(src: Path, tgt: Path, label: str) -> None:
-    tgt.parent.mkdir(parents=True, exist_ok=True)
-    if not src.exists():
-        print(f"  MISS {label} (source missing)")
-        return
-    if tgt.is_symlink():
-        if tgt.readlink() == src:
-            print(f"  OK   {label}")
-            return
-        if tgt.exists():
-            print(f"  TAKEN {label} → {tgt.readlink()} (another kit owns this name; remove that link to switch)")
-            return
-        tgt.unlink()
-    if tgt.exists():
-        print(f"  SKIP {label} (local file/dir, not a symlink)")
-        return
-    os.symlink(src, tgt)
-    print(f"  LINK {label}")
+MANIFESTS = ".kit-manifests"
+SHARED_NAME = "praxis-kit"
+KERNEL = "rules/praxis-kit.md"
+
+type Manifest = dict[str, Any]
 
 
-def install(profiles: list[str], target_root: Path) -> None:
-    base = target_root / ".claude"
-    print(f"=== Installing {profiles} into {base} ===")
-    base.mkdir(parents=True, exist_ok=True)
-
+def kit_name() -> str:
     if is_shared_root():
-        link_item(CLAUDE_SRC / "CLAUDE.md", base / "CLAUDE.md", "CLAUDE.md")
-        link_item(REPO / "CONSTITUTION.md", base / "CONSTITUTION.md", "CONSTITUTION.md")
+        return SHARED_NAME
+    name = CLAUDE_SRC.parent.name
+    if name == SHARED_NAME:
+        raise ValueError(f"--kit {CLAUDE_SRC.parent}: a kit installed on top cannot be named {SHARED_NAME}, "
+                         "because its manifest would replace praxis-kit's; rename its directory")
+    return name
 
+
+def manifest_path(base: Path, name: str | None = None) -> Path:
+    return base / MANIFESTS / f"{name or kit_name()}.json"
+
+
+def load_manifest(path: Path) -> Manifest:
+    if not path.exists():
+        return {"files": {}, "profiles": []}
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError as error:
+        raise ValueError(f"{path}: {error}") from error
+    if not isinstance(data, dict) or not isinstance(data.get("files"), dict):
+        raise ValueError(f"{path}: not a kit manifest")
+    for rel, entry in data["files"].items():
+        parts = Path(rel).parts
+        if Path(rel).is_absolute() or ".." in parts or not parts:
+            raise ValueError(f"{path}: {rel!r} is not a path inside .claude")
+        if not isinstance(entry, dict) or not all(isinstance(entry.get(k), str) for k in ("source", "sha256")):
+            raise ValueError(f"{path}: {rel!r} needs a source and a sha256")
+    names = data.setdefault("profiles", [])
+    if not isinstance(names, list) or not all(isinstance(n, str) and n and Path(n).name == n for n in names):
+        raise ValueError(f"{path}: profiles must be a list of profile names")
+    return data
+
+
+def _home_relative(path: Path) -> str:
+    home = Path.home()
+    return f"~/{path.relative_to(home).as_posix()}" if path.is_relative_to(home) else str(path)
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _kit_commit(root: Path) -> str | None:
+    try:
+        result = subprocess.run(["git", "-C", str(root), "describe", "--always", "--dirty"], capture_output=True, text=True)
+    except FileNotFoundError:
+        return None
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def _merged(profiles: list[str]) -> dict[str, list[str]]:
     merged: dict[str, list[str]] = {k: [] for k in KINDS}
     for name in profiles:
         r = resolve(name)
@@ -122,35 +157,205 @@ def install(profiles: list[str], target_root: Path) -> None:
             for item in r[k]:
                 if item not in merged[k]:
                     merged[k].append(item)
+    return merged
 
+
+def _items(merged: dict[str, list[str]]) -> list[tuple[str, Path]]:
+    """Each installed item as (path under .claude, source), the kernel and CONSTITUTION.md first."""
+    items = [(KERNEL, CLAUDE_SRC / "CLAUDE.md"), ("CONSTITUTION.md", REPO / "CONSTITUTION.md")] if is_shared_root() else []
     for kind in KINDS:
-        items = merged[kind]
-        if not items:
-            continue
-        print(f"-- {kind} --")
-        for item in items:
+        for item in merged[kind]:
             if kind == "assets":
-                src = CLAUDE_SRC / item
-                tgt = base / item
-                label = f"{kind}/{item}"
+                items.append((item, CLAUDE_SRC / item))
             elif kind == "agents":
-                # Convention: bare names in JSON; .md appended at link time
                 fname = item if item.endswith(".md") else f"{item}.md"
-                src = CLAUDE_SRC / kind / fname
-                tgt = base / kind / fname
-                label = f"{kind}/{fname}"
+                items.append((f"{kind}/{fname}", CLAUDE_SRC / kind / fname))
             else:
-                src = CLAUDE_SRC / kind / item
-                tgt = base / kind / item
-                label = f"{kind}/{item}"
-            link_item(src, tgt, label)
+                items.append((f"{kind}/{item}", CLAUDE_SRC / kind / item))
+    return items
+
+
+def _skipped(path: Path) -> bool:
+    return any(part.startswith(".") or part == "__pycache__" for part in path.parts)
+
+
+def _files(rel: str, src: Path) -> list[tuple[str, Path]]:
+    if src.is_dir():
+        return [(f"{rel}/{f.relative_to(src).as_posix()}", f) for f in sorted(src.rglob("*"))
+                if f.is_file() and not _skipped(f.relative_to(src))]
+    return [(rel, src)]
+
+
+def _ours(link: Path) -> bool:
+    dest = link.readlink()
+    return dest.is_relative_to(CLAUDE_SRC) or dest == REPO / "CONSTITUTION.md"
+
+
+def _kind_entries(base: Path) -> list[Path]:
+    return [p for kind in ("skills", "agents", "commands", "rules") if (base / kind).is_dir()
+            for p in sorted((base / kind).iterdir())]
+
+
+def _prune(base: Path, rel: str) -> None:
+    parent = (base / rel).parent
+    while parent != base and parent.is_dir() and not any(parent.iterdir()):
+        parent.rmdir()
+        parent = parent.parent
+
+
+def install(profiles: list[str], target_root: Path, dry_run: bool = False) -> int:
+    """Add the profiles to those TARGET/.claude has, keeping local edits and refusing files the kit did not install."""
+    base = target_root / ".claude"
+    own_path = manifest_path(base)
+    own_manifest = load_manifest(own_path)
+    own = own_manifest["files"]
+    print(f"=== {'Planning' if dry_run else 'Installing'} {profiles} into {base} ===")
+    for name in own_manifest["profiles"]:
+        if name in profiles:
+            continue
+        if (PROFILES_DIR / f"{name}.json").exists():
+            print(f"  KEEP    profile {name} (installed earlier)")
+            profiles = [*profiles, name]
+        else:
+            print(f"  DROP    profile {name} (the kit no longer has it)")
+    merged = _merged(profiles)
+    others: dict[str, str] = {}
+    if (base / MANIFESTS).is_dir():
+        for m in sorted((base / MANIFESTS).glob("*.json")):
+            if m != own_path:
+                others.update({rel: m.stem for rel in load_manifest(m)["files"]})
+
+    legacy: list[Path] = []
+    planned: dict[str, Path] = {}
+    for rel, src in _items(merged):
+        if not src.exists():
+            print(f"  MISS    {rel} (source missing)")
+            continue
+        taker = next((others[o] for o in others if o == rel or o.startswith(f"{rel}/")), None)
+        if taker is not None:
+            print(f"  TAKEN   {rel} (installed by {taker}; uninstall it there to switch)")
+            continue
+        legacy.append(base / rel)
+        planned.update(_files(rel, src))
+    unlink = [p for p in legacy if p.is_symlink() and (_ours(p) or not p.exists())]
+    foreign_links = [p for p in legacy if p.is_symlink() and p not in unlink]
+    kernel_link = base / "CLAUDE.md"
+    if is_shared_root() and kernel_link.is_symlink() and _ours(kernel_link):
+        unlink.append(kernel_link)
+    unlink += [p for p in _kind_entries(base) if p.is_symlink() and not p.exists() and _ours(p) and p not in unlink]
+    for link in unlink:
+        print(f"  UNLINK  {link.relative_to(base)} (a symlink from an earlier install)")
+
+    def exists(rel: str) -> bool:
+        path = base / rel
+        return path.exists() and not any(path == u or path.is_relative_to(u) for u in unlink)
+
+    writes: list[str] = []
+    files: dict[str, dict[str, str]] = {}
+    conflicts = [f"{p.relative_to(base)} is a symlink to {p.readlink()}" for p in foreign_links]
+    for rel, src in planned.items():
+        new = _sha256(src)
+        entry = {"source": src.relative_to(src_root(src)).as_posix(), "sha256": new}
+        if any(Path(rel).is_relative_to(p.relative_to(base)) for p in foreign_links):
+            continue
+        blocker = next((d for d in [base / rel, *(base / rel).parents] if d.is_relative_to(base) and d != base
+                        and d.exists() and (d.is_file() != (d == base / rel))), None)
+        if blocker is not None and exists(blocker.relative_to(base).as_posix()):
+            conflicts.append(f"{blocker.relative_to(base)} is in the way of {rel}")
+            continue
+        if not exists(rel):
+            print(f"  ADD     {rel}")
+            writes.append(rel)
+        else:
+            current = _sha256(base / rel)
+            recorded = own.get(rel, {}).get("sha256")
+            if current == new:
+                print(f"  OK      {rel}")
+            elif rel not in own:
+                conflicts.append(f"{rel} exists and the kit did not install it")
+                continue
+            elif current == recorded:
+                print(f"  UPDATE  {rel}")
+                writes.append(rel)
+            else:
+                changed = "; the kit's version changed too" if new != recorded else ""
+                print(f"  KEEP    {rel} (edited here{changed})")
+                entry["sha256"] = recorded
+        files[rel] = entry
+
+    removes = []
+    for rel, entry in own.items():
+        if rel in files:
+            continue
+        path = base / rel
+        if path.is_file() and _sha256(path) == entry["sha256"]:
+            print(f"  REMOVE  {rel} (the kit dropped it)")
+            removes.append(rel)
+        elif path.is_file():
+            print(f"  KEEP    {rel} (the kit dropped it; edited here, so it is yours now)")
+
+    if conflicts:
+        for c in conflicts:
+            print(f"  REFUSE  {c}")
+        print("Nothing was changed. Move each file above aside, or merge it into the kit, then install again.")
+        return 1
+    if dry_run:
+        print("Dry run: nothing was changed.")
+        return 0
+
+    record: Manifest = {"commit": _kit_commit(CLAUDE_SRC.parent), "files": files, "profiles": profiles}
+    if target_root == Path.home():
+        record["kit"] = _home_relative(CLAUDE_SRC.parent)
+    for link in unlink:
+        link.unlink()
+    for rel in writes:
+        (base / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(planned[rel], base / rel)
+    for rel in removes:
+        (base / rel).unlink()
+        _prune(base, rel)
+    own_path.parent.mkdir(parents=True, exist_ok=True)
+    partial = own_path.with_suffix(".json.tmp")
+    partial.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+    partial.replace(own_path)
 
     if target_root != Path.home():
         print("-- cost of this install --")
         n = _kernel_size()
-        print(f"  {n:>7}  CLAUDE.md")
+        print(f"  {n:>7}  kernel")
         total = n + _scoped_budget(merged["rules"], merged["skills"], "this install")
         print(f"  {total:>7}  TOTAL (~{total // 4} tokens)")
+    return 0
+
+
+def src_root(src: Path) -> Path:
+    return REPO if src == REPO / "CONSTITUTION.md" else CLAUDE_SRC.parent
+
+
+def _source(recorded: str) -> Path:
+    return REPO / recorded if recorded == "CONSTITUTION.md" else CLAUDE_SRC.parent / recorded
+
+
+def uninstall(target_root: Path) -> int:
+    """Remove every file this kit's manifest lists that is unedited; report and keep the rest."""
+    base = target_root / ".claude"
+    path = manifest_path(base)
+    if not path.exists():
+        print(f"No {kit_name()} manifest in {base}; nothing to uninstall")
+        return 0
+    for rel, entry in sorted(load_manifest(path)["files"].items()):
+        target = base / rel
+        if not target.is_file():
+            continue
+        if _sha256(target) == entry["sha256"]:
+            target.unlink()
+            _prune(base, rel)
+            print(f"  REMOVE  {rel}")
+        else:
+            print(f"  KEEP    {rel} (edited here)")
+    path.unlink()
+    _prune(base, path.relative_to(base).as_posix())
+    return 0
 
 
 def cmd_list() -> None:
@@ -402,48 +607,47 @@ def cmd_budget(limit: int = BUDGET_LIMIT, profile: str | None = None) -> int:
 
 
 def cmd_doctor(target_root: Path) -> int:
-    """Two-way drift check: repo artifacts vs the installed .claude tree."""
+    """Compare TARGET/.claude with this kit's manifest and with the kit's current sources."""
     base = target_root / ".claude"
     problems = 0
-    kernel = base / "CLAUDE.md"
-    shared = (("CLAUDE.md", CLAUDE_SRC / "CLAUDE.md"), ("CONSTITUTION.md", REPO / "CONSTITUTION.md"))
-    for name, src in shared if is_shared_root() else ():
-        path = base / name
-        if path.is_symlink():
-            if not path.exists():
-                print(f"  DANGLING  {name} → {path.readlink()} (re-run the install)")
-                problems += 1
-            elif path.readlink() != src:
-                print(f"  FOREIGN   {name} → {path.readlink()}  (another setup; fine)")
-        elif path.exists():
-            print(f"  COPY      {name} — not a symlink; installer cannot update it")
+    path = manifest_path(base)
+    if not path.exists():
+        print(f"  NO MANIFEST  {kit_name()} is not installed in {base} (run the install)")
+        return 1
+    manifest = load_manifest(path)
+    for rel, entry in sorted(manifest["files"].items()):
+        target = base / rel
+        source = _source(entry["source"])
+        if not target.is_file():
+            print(f"  MISSING   {rel} (re-run the install)")
             problems += 1
-        elif name == "CONSTITUTION.md" and kernel.is_symlink() and kernel.readlink() == CLAUDE_SRC / "CLAUDE.md":
-            print(f"  MISSING   {name} — the kernel points at it; re-run the install")
+        elif _sha256(target) != entry["sha256"]:
+            print(f"  EDITED    {rel} (differs from what the kit installed)")
             problems += 1
+        elif not source.exists():
+            print(f"  DROPPED   {rel} (the kit no longer has it; re-run the install)")
+            problems += 1
+        elif _sha256(source) != entry["sha256"]:
+            print(f"  OUTDATED  {rel} (the kit changed it; re-run the install)")
+            problems += 1
+    owned = set(manifest["files"])
+    for m in (base / MANIFESTS).glob("*.json"):
+        owned |= set(load_manifest(m)["files"])
     for kind in ("skills", "agents", "commands", "rules"):
-        src_dir = CLAUDE_SRC / kind
         tgt_dir = base / kind
-        if not tgt_dir.exists():
+        if not tgt_dir.is_dir():
             continue
-        repo_names = {p.name for p in src_dir.iterdir()} if src_dir.exists() else set()
-        for item in sorted(tgt_dir.iterdir()):
-            if item.is_symlink():
-                dest = item.readlink()
-                if str(dest).startswith(str(CLAUDE_SRC)):
-                    if not dest.exists():
-                        hint = "just clean-stale" if is_shared_root() else f"just clean-stale {CLAUDE_SRC.parent}"
-                        print(f"  DANGLING  {kind}/{item.name} → removed repo artifact (run `{hint}`)")
-                        problems += 1
-                else:
-                    print(f"  FOREIGN   {kind}/{item.name} → {dest}  (another setup; fine)")
-            elif item.name in repo_names:
-                print(f"  COPY      {kind}/{item.name} — repo artifact as real dir; installer SKIPs it (convert to symlink)")
+        for item in sorted(tgt_dir.rglob("*")):
+            rel = item.relative_to(base).as_posix()
+            if item.is_symlink() and _ours(item):
+                print(f"  LINK      {rel} → {item.readlink()} (a symlink from an earlier install; re-run the install)")
                 problems += 1
-            else:
-                print(f"  UNTRACKED {kind}/{item.name} — only in {base}, not under version control")
+            elif item.is_symlink():
+                print(f"  LINK      {rel} → {item.readlink()} (not from a manifest; fine if another setup made it)")
+            elif item.is_file() and rel not in owned and not _skipped(item.relative_to(tgt_dir)):
+                print(f"  UNTRACKED {rel} (no kit installed it)")
                 problems += 1
-    print("OK — installed tree matches repo" if problems == 0 else f"{problems} drift problem(s)")
+    print("OK — installed tree matches the manifest and the kit" if problems == 0 else f"{problems} drift problem(s)")
     return problems
 
 
@@ -476,15 +680,19 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("--kit", type=kit_dir, help="act on another kit with the same profiles/ + claude/ layout, such as a personal kit")
     sub = p.add_subparsers(dest="action", required=True)
     sub.add_parser("list", help="list profiles and their descriptions")
-    install_cmd = sub.add_parser("install", help="symlink profiles into ~/.claude/ (default: all)")
+    install_cmd = sub.add_parser("install", help="copy profiles into ~/.claude/ (default: all)")
+    install_cmd.add_argument("--dry-run", action="store_true", help="print what would change, and change nothing")
     install_cmd.add_argument("profiles", nargs="*")
-    project_cmd = sub.add_parser("install-project", help="symlink profiles into DIR/.claude/")
+    project_cmd = sub.add_parser("install-project", help="copy profiles into DIR/.claude/")
+    project_cmd.add_argument("--dry-run", action="store_true", help="print what would change, and change nothing")
     project_cmd.add_argument("dir", type=Path)
     project_cmd.add_argument("profiles", nargs="+")
+    uninstall_cmd = sub.add_parser("uninstall", help="remove this kit's unedited files from TARGET/.claude (default ~)")
+    uninstall_cmd.add_argument("target", nargs="?", type=Path)
     sub.add_parser("validate", help="check every artifact belongs to a profile and every agent's tool grant")
     budget_cmd = sub.add_parser("budget", help="sum the always-on bytes against LIMIT, or break down one PROFILE")
     budget_cmd.add_argument("limit_or_profile", nargs="?", metavar="LIMIT|PROFILE")
-    doctor_cmd = sub.add_parser("doctor", help="two-way drift check: repo vs TARGET/.claude (default ~)")
+    doctor_cmd = sub.add_parser("doctor", help="compare TARGET/.claude (default ~) with this kit's manifest")
     doctor_cmd.add_argument("target", nargs="?", type=Path)
     resolve_cmd = sub.add_parser("resolve", help="print a profile's merged set as JSON")
     resolve_cmd.add_argument("profile")
@@ -507,11 +715,11 @@ def _dispatch(args: argparse.Namespace) -> int:
             p.stem for p in sorted(PROFILES_DIR.glob("*.json"))
             if p.stem != "projects.schema"
         ]
-        install(profiles, Path.home())
-        return 0
+        return install(profiles, Path.home(), args.dry_run)
     if args.action == "install-project":
-        install(args.profiles, args.dir.resolve())
-        return 0
+        return install(args.profiles, args.dir.resolve(), args.dry_run)
+    if args.action == "uninstall":
+        return uninstall(args.target.resolve() if args.target else Path.home())
     if args.action == "validate":
         errors = cmd_validate()
         lint_descriptions()

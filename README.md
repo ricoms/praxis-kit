@@ -36,17 +36,16 @@ private. Terms used throughout are explained under [Terms](#terms).
      machine. Add profiles from the table under Install as you need them, or run `just install` for all of them.
    - To leave the rest of the machine untouched, `just install-project /path/to/project minimal` installs into that
      project's `.claude/` only.
-   - A `CLAUDE.md` already at the target that is not one of the kit's links is left alone and reported as `SKIP`.
-     The kit's rules then do not load there until you move that file aside or merge it.
+   - The kit's rules install under `.claude/rules/`, so a `CLAUDE.md` already at the target is never touched. A file
+     the kit did not install sitting where the kit needs one stops the install before anything changes.
 3. Open your project in Claude Code and run `/settling-agreements`. It reads what the project already does, starts from
    any `agreements.md` you bring from another project or your team, and asks only what it cannot work out.
 4. Approve the resulting `docs/agreements.md`. A team reads it as a PR first, then meets only on the rows someone contests.
 
 **Starting a new project?** Apply the [template](template/README.md) before step 3. It renders `.claude/CLAUDE.md` and
 `docs/agreements.md`, and copier overwrites both, so anything settled earlier is lost. The rendered
-`.claude/CLAUDE.md` extends the global `~/.claude/CLAUDE.md`, so a project made from the template needs the global
-install. Run `just install-project` into it after `copier copy`, never before: copier will not write over the files the
-install links.
+`.claude/CLAUDE.md` extends the kit's rules in `~/.claude/rules/`, so a project made from the template needs the global
+install, or `just install-project` into it after `copier copy`.
 
 **Want the background first?** Skim [`CONSTITUTION.md`](CONSTITUTION.md): what the team is after, the safety floor,
 the stages and the agreements that `/settling-agreements` settles.
@@ -85,16 +84,21 @@ lacks it, so the system Python does not matter. `hugin`, the kit's command (ADR 
 `docs/adr/0001-kit-tooling-hugin.md`), runs as `uv run hugin`, and its tests run with `uv run python`. The
 project-registry recipes also run with `uv run python`; set `PYTHON` to run them with another interpreter instead.
 
-Files are **symlinked**, not copied, from this repository into `~/.claude/` or a project's `.claude/`. Editing a file
-here changes it everywhere it is linked. A local file that is not a symlink is never overwritten.
+Files are **copied** from this checkout into `~/.claude/` or a project's `.claude/`. The kit's kernel goes to
+`.claude/rules/praxis-kit.md`, so an existing `CLAUDE.md` is never touched. Each install records what it copied in
+`.claude/.kit-manifests/<kit>.json`, with the kit's commit, and in `~/.claude` the checkout's path. Reinstalling
+updates the files nobody edited, keeps and reports the ones somebody did, and removes the ones the kit dropped. A file
+the kit did not install stops the install before anything changes. Edits in this checkout reach an installed copy only when you install again.
+The manifest also records the installed profiles, and each install adds to them: installing fewer profiles keeps
+the earlier ones. To remove a profile, run `just uninstall` and install the profiles you want.
 
 ```sh
-just install                                   # every profile into ~/.claude, plus CLAUDE.md and CONSTITUTION.md
+just install                                   # every profile into ~/.claude, plus the kernel and CONSTITUTION.md
 just install-only minimal security
 just install-project /path/to/repo security team-delivery
-just status                                    # what is linked now
-just doctor                                    # drift between this repo and ~/.claude
-just clean-stale                               # remove links to artifacts this repo no longer has
+just install-dry minimal                       # what an install would change, changing nothing
+just uninstall                                 # remove this kit's unedited files from ~/.claude
+just doctor                                    # ~/.claude against the manifest and this checkout
 just projects-sync-all                         # re-apply profiles to the projects listed in projects.json (gitignored;
                                                # start from projects.example.json)
 ```
@@ -131,14 +135,16 @@ It has the same `profiles/` + `claude/` layout and is installed with this reposi
 uv run --no-dev --project ../praxis-kit hugin profiles --root ../praxis-kit --kit ../my-kit install
 ```
 
-It never installs `CLAUDE.md` or `CONSTITUTION.md`, and an item name this kit already links is reported `TAKEN`
-instead of replaced. `just clean-stale ../my-kit` removes dangling links into it.
+It never installs the kernel or `CONSTITUTION.md`, and keeps its own manifest. A file this kit already installed is
+reported `TAKEN` instead of replaced. `uninstall` with the same `--kit` removes its unedited files. Its directory name
+names its manifest, so it cannot be called `praxis-kit`. When moving from symlinks to copies, install this kit first:
+an old symlink of this kit's in the way of the other kit stops the other kit's install.
 
 ## Terms
 
 | Term | Meaning |
 |---|---|
-| Kernel | [`claude/CLAUDE.md`](claude/CLAUDE.md), the agent rules installed as `~/.claude/CLAUDE.md` and loaded in every session. With [`claude/rules/`](claude/rules/), it is the kit's always-on context. |
+| Kernel | [`claude/CLAUDE.md`](claude/CLAUDE.md), the agent rules installed as `~/.claude/rules/praxis-kit.md` and loaded in every session. With [`claude/rules/`](claude/rules/), it is the kit's always-on context. |
 | Always-on budget | The bytes the kernel, the rules and every skill's description add to each session. `just budget` holds them under a limit that only goes down. |
 | Profile | A named set of skills, rules and commands in [`profiles/`](profiles/). An install picks one or more profiles. |
 | Skill | A procedure an agent loads when it is asked for by name or when its description matches the task, under [`claude/skills/`](claude/skills/). |

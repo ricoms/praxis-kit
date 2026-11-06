@@ -33,8 +33,8 @@ uv run --no-dev --project <kit> hugin snapshot collect --repo OWNER/NAME \
 uv run --no-dev --project <kit> hugin snapshot report <snapshot dir> --json
 ```
 
-`<kit>` is the praxis-kit checkout this skill is linked from: the resolved path of this skill's directory, three levels
-up. `uv` provides Python 3.13 there. Relative paths such as `--out` stay relative to the current directory.
+`<kit>` is the praxis-kit checkout installed in `~/.claude`: the `kit` path in `~/.claude/.kit-manifests/praxis-kit.json`,
+where `~` stands for the home directory. A project's own manifest records no path, because each teammate's differs. `uv` provides Python 3.13 there. Relative paths such as `--out` stay relative to the current directory.
 
 Add `--board OWNER/NUMBER --capacity DAYS --target "<milestone>"` for the board reading. The field-name flags are
 `hugin velocity`'s (`--help`). Only the repository's own issues on the board are read.

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-The kit a team shares: `CONSTITUTION.md`, the team practices, agreements, decision points and references, plus the agent rules, skills and template that enforce them. It is installed via symlinks (not copies) into `~/.claude/` or a project's `.claude/`. Editing a file here changes it everywhere it's symlinked. There is no app to build or run — the "product" is the documents, the `claude/` tree, `template/`, and the kit's tooling in `src/hugin/`, including the profile resolver (`hugin profiles`).
+The kit a team shares: `CONSTITUTION.md`, the team practices, agreements, decision points and references, plus the agent rules, skills and template that enforce them. It is installed by copying into `~/.claude/` or a project's `.claude/`, with a manifest per kit; an edit here reaches an installed copy only when it is installed again. There is no app to build or run — the "product" is the documents, the `claude/` tree, `template/`, and the kit's tooling in `src/hugin/`, including the profile resolver (`hugin profiles`).
 
 Nothing specific to one person belongs here. A person's own tooling lives in their own kit, installed on top with `hugin profiles --kit` (see `CONSTITUTION.md` §6). Before adding an artifact, ask whether a team member needs it to follow a shared agreement; if not, it belongs in a personal kit.
 
@@ -19,12 +19,12 @@ just test                        # fixture tests for hugin's commands (scripts/t
 just typecheck                   # mypy --strict on src/hugin
 just check                       # everything CI runs, in order: validate, budget, radar check, test, typecheck, check-template; run before every push
 just budget                      # always-on byte total (CLAUDE.md + rules + skill frontmatter descriptions) vs BUDGET_LIMIT ratchet in src/hugin/profiles.py
-just doctor                      # two-way drift: repo artifacts vs installed ~/.claude tree
-just install                     # symlink all profiles into ~/.claude/
+just doctor                      # installed ~/.claude tree vs its manifest and this checkout
+just install                     # copy all profiles into ~/.claude/
 just install-only minimal security
 just install-project DIR PROFILE...
-just clean-stale [ROOT]          # remove symlinks pointing at removed artifacts of this repo, or of the kit at ROOT
-just status                      # what's currently symlinked in ~/.claude/
+just install-dry PROFILE         # what an install would change, changing nothing
+just uninstall                   # remove this kit's unedited files from ~/.claude
 just references-fetch           # download the arXiv sources behind docs/references/*.md (PDFs are gitignored)
 just docs-index                  # index CONSTITUTION.md, docs/references and docs/ai-sdlc as the qmd collection praxis-kit
 ```
@@ -39,7 +39,7 @@ Manual `resolve`/single-artifact checks: `uv run hugin profiles <command>` direc
 
 ### Profile resolution (`hugin profiles`, `src/hugin/profiles.py`)
 
-Each `profiles/*.json` declares `description`, optional single-level `extends`, and up to five kinds of artifact lists: `skills`, `agents`, `commands`, `rules`, `assets`. `resolve()` walks the `extends` chain and merges lists (later/child entries append, de-duped). `install()`/`install-project()` symlink the merged set from `claude/<kind>/<item>` into the target's `.claude/<kind>/`, and always link `claude/CLAUDE.md` and the root `CONSTITUTION.md` into `.claude/`. Existing local non-symlink files at the target are preserved and reported as `SKIP`, never overwritten.
+Each `profiles/*.json` declares `description`, optional single-level `extends`, and up to five kinds of artifact lists: `skills`, `agents`, `commands`, `rules`, `assets`. `resolve()` walks the `extends` chain and merges lists (later/child entries append, de-duped). `install()`/`install-project()` copy the merged set from `claude/<kind>/<item>` into the target's `.claude/<kind>/`, plus `claude/CLAUDE.md` as `.claude/rules/praxis-kit.md` and the root `CONSTITUTION.md` as `.claude/CONSTITUTION.md`. The manifest `.claude/.kit-manifests/<kit>.json` records each file's source and hash, the installed profiles and the kit's commit, plus the checkout's path in `~/.claude` only. An install adds its profiles to the recorded ones; it updates unedited files, keeps edited ones, removes dropped ones, and refuses to start while a file the kit did not install sits in the way.
 
 Every profile except `minimal` extends it directly or transitively — `minimal` carries the always-on rules and the skills every team project uses (clarification, issues and boards, project docs, instruction files). `base` adds the security scan gate that pairs with the template; `security`, `spec-kit` and `team-delivery` extend `base`.
 
@@ -56,7 +56,7 @@ Every profile except `minimal` extends it directly or transitively — `minimal`
 
 ### Editing an artifact
 
-Skills/agents/rules/commands are referenced by exact filename/dirname in one or more `profiles/*.json`. After adding, renaming, or removing an artifact under `claude/`, update every profile that lists it and run `just validate` — an artifact claimed by zero profiles fails validation, and a profile referencing a missing artifact fails silently at install time (`MISS` in `install`'s output) rather than erroring.
+Skills/agents/rules/commands are referenced by exact filename/dirname in one or more `profiles/*.json`. After adding, renaming, or removing an artifact under `claude/`, update every profile that lists it and run `just validate` — an artifact claimed by zero profiles fails validation, and a profile referencing a missing artifact is reported as `MISS` at install time rather than erroring.
 
 ### Authoring conventions (enforced by `authoring-instruction-files` skill)
 
