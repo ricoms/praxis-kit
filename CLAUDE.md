@@ -15,7 +15,7 @@ just list-profiles              # profiles + descriptions
 just resolve PROFILE             # merged artifact set after extends chain
 just validate                    # every artifact claimed by >=1 profile, agent tool grants cover what their skill invokes, description length lint
 just check-template              # render template variants, actionlint + shellcheck, ruleset vs ci.yml, practices and constitution claims
-just test                        # fixture tests for the kit's scripts (scripts/tests)
+just test                        # fixture tests for hugin's commands (scripts/tests)
 just typecheck                   # mypy --strict on src/hugin
 just check                       # everything CI runs, in order: validate, budget, radar check, test, typecheck, check-template; run before every push
 just budget                      # always-on byte total (CLAUDE.md + rules + skill frontmatter descriptions) vs BUDGET_LIMIT ratchet in src/hugin/profiles.py

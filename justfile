@@ -33,9 +33,9 @@ budget:
 check-template:
     uv run hugin check-template
 
-# Fixture tests for the kit's scripts (scripts/tests)
+# Fixture tests for hugin's commands (scripts/tests)
 test:
-    {{python}} -m unittest discover -s scripts/tests
+    uv run python -m unittest discover -s scripts/tests
 
 # mypy --strict on src/hugin
 typecheck:
@@ -46,7 +46,7 @@ check:
     {{profiles}} validate
     {{profiles}} budget
     uv run hugin radar check
-    {{python}} -m unittest discover -s scripts/tests
+    uv run python -m unittest discover -s scripts/tests
     {{just_executable()}} --justfile {{justfile()}} typecheck
     uv run hugin check-template
 

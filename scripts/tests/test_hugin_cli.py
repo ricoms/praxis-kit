@@ -4,8 +4,9 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
-from hugin import cli, kit
+from hugin import check_template, cli, kit
 
 RADAR = """
 [[blip]]
@@ -99,6 +100,17 @@ class KitRoot(unittest.TestCase):
         with self.assertRaises(SystemExit) as raised:
             cli.main(["check-template", "--root", str(self.base)])
         self.assertIn("not a praxis-kit checkout", str(raised.exception))
+
+    def test_check_template_runs_on_the_kit_root(self):
+        before = Path.cwd()
+        with mock.patch.object(check_template, "run", return_value=0) as run:
+            self.assertEqual(cli.main(["check-template", "--root", str(self.kit)]), 0)
+            os.chdir(self.kit / "docs")
+            try:
+                self.assertEqual(cli.main(["check-template"]), 0)
+            finally:
+                os.chdir(before)
+        self.assertEqual(run.call_args_list, [mock.call(self.kit.resolve())] * 2)
 
     def test_radar_rejects_unknown_arguments(self):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as raised:

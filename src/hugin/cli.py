@@ -23,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     profiles.add_arguments(profiles_cmd)
     template_cmd = commands.add_parser(
         "check-template", help="render the copier template's variants and check what the kit claims about them",
-        description=check_template.__doc__)
+        description=check_template.__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     kit.add_root_argument(template_cmd)
     return parser
 
