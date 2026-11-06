@@ -26,12 +26,13 @@
         "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
+{% if stack_decided %}
           { "context": "checks" },
+{% endif %}
 {% if release_workflow %}
           { "context": "image" },
 {% endif %}
           { "context": "private-refs" },
-          { "context": "adr" },
           { "context": "gitleaks" }
         ]
       }

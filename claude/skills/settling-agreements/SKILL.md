@@ -57,6 +57,19 @@ runbooks. Ask only when the signals disagree. The situation decides how much evi
 Settle tenancy and stage the same way. Stage follows the §4 table: real data, promised availability and the rate of
 change. Tenancy has no default. Ask when the code does not show it.
 
+Settle whether the stack is decided. It is decided when an ADR accepts it, or when the code already runs on it:
+
+- **New project.** The developer names the stack, or asks for options, which come from `docs/ai-sdlc/radar.md` and
+  `docs/ai-sdlc/decision-points.md`. Either way it becomes a stack ADR for the decider to accept. Until then, the
+  stack is undecided.
+- **Ongoing or brownfield project.** Read the stack from the repository: lockfiles, CI workflows, Dockerfiles. It is
+  decided. Record it in an ADR that describes the existing stack, and fill the template's slots from the commands the
+  project already runs.
+- **A proposed addition** to an existing stack, such as a new language or datastore, is its own proposed ADR, drafted
+  from what the repository already uses. Once accepted, it adds to the slots. It never makes the stack undecided.
+
+`template/README.md` § How CI grows draws the same tree.
+
 ## 2. Gather the starting answers
 
 Collect them in layers. A later layer overrides an earlier one, and every row remembers which layer it came from.
@@ -114,11 +127,18 @@ because copier overwrites both files.
 |---|---|
 | the project's name | `project_name`, from the repository name unless the developer gives another |
 | tenancy and stage | `tenancy_mode`, `stage` |
-| CI on GitHub Actions | `ci_target=github-actions`, which the next two answers require |
-| a deployment workflow through the pipeline | `release_workflow=true` |
+| CI on GitHub Actions | `ci_target=github-actions`, which `release_workflow` and `team_delivery` require |
+| the stack is decided (step 1) | `stack_decided=true` |
+| a deployment workflow through the pipeline, once there is a deploy target or the project leaves `explore` | `release_workflow=true`, which requires `stack_decided` |
 | more than one person, or a client to coordinate with | `team_delivery=true` |
 | the decider for one-way decisions, on a team | `decision_owners` |
 | the response expectation for reviews, on a team | `review_wait_hours` |
+
+In `explore` with the stack undecided, render `stack_decided=false` and `release_workflow=false`. Record the
+deployment, rollback and hotfix rows as "settled when there is a deploy target or the project leaves `explore`": §5
+asks for them before the first change reaches production, and explore code never reaches production. Past `explore`,
+render `stack_decided=true` even before the stack ADR is accepted: §4 asks for lint and tests there, so CI stays red
+until the slots are filled, and the stack ADR is the first thing to settle.
 
 Run it only if the developer agrees:
 

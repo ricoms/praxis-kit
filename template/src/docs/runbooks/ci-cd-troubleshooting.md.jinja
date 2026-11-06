@@ -7,9 +7,15 @@ The workflow YAML is the source of truth for *what* runs (`.github/workflows/ci.
 
 | Symptom | Fix |
 |---|---|
+{% if stack_decided %}
 | `checks` fails before `just ci` runs | The toolchain action (`.github/actions/toolchain`) could not install the stack; update it when the stack's tools change |
-| `checks` fails with "lint is not configured" (or test, audit) | The project has not written that recipe yet. Fill it in the justfile; CI runs exactly what `just ci` runs |
+| `checks` fails with "{{ "test" if stage == "explore" else "lint" }} is not configured"{{ "" if stage == "explore" else " (or test, audit)" }} | The project has not written that recipe yet. Fill it in the justfile; CI runs exactly what `just ci` runs |
+{% if stage == "explore" %}
+| `checks` fails on the test step | Run `just test` locally; in `explore`, `just ci` runs only `test` |
+{% else %}
 | `checks` fails on a lint, test or audit step | Run the same recipe locally (`just lint`, `just test`, `just audit`); `just ci` runs all three and reports every failure |
+{% endif %}
+{% endif %}
 {% if release_workflow %}
 | `image` fails with "scripts/build-image.sh is not written" | Write the project's image build in `scripts/build-image.sh`; CI and the release both call it |
 | `image` fails at "Start it and run the smoke checks" | The image builds but does not serve `/health`: read the container logs printed above the failure |

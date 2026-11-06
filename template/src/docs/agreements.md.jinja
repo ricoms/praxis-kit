@@ -15,7 +15,11 @@ A current practice that breaks the safety floor is not an agreement. Record it a
 | Rollback workflow | Traffic rolls back automatically when the post-deploy smoke checks fail. A problem found later is rolled back by dispatching the release workflow on the last good tag with `rollback=true` (`docs/runbooks/rollback.md`); anyone who can dispatch workflows can trigger it. Rehearsed once on dev before the first production release. | proposed, not yet agreed | | | |
 | Hotfix path | A fix branch from `main` through the normal checks, then a final release that skips the pre-release and says so. | proposed, not yet agreed | | | |
 {% else %}
+{% if not stack_decided %}
+| Deployment workflow and its environments | None proposed until there is a deploy target or the project leaves `explore`. Then render the release workflow, which needs the stack decided, with `copier update --trust --answers-file .copier-answers.praxis-kit.yml --data release_workflow=true`, or settle another. | proposed, not yet agreed | | | |
+{% else %}
 | Deployment workflow and its environments | None proposed. The release workflow was not rendered; render it with `copier update --trust --answers-file .copier-answers.praxis-kit.yml --data release_workflow=true` or settle another. | proposed, not yet agreed | | | |
+{% endif %}
 | Rollback workflow | None proposed until a release workflow exists. | proposed, not yet agreed | | | |
 | Hotfix path | None proposed until a release workflow exists. | proposed, not yet agreed | | | |
 {% endif %}

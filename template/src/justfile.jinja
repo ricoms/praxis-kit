@@ -1,8 +1,9 @@
 # {{ project_name }} — task runner
 # See docs/runbooks/ for command details.
 #
-# `lint`, `test` and `audit` are the project's slots: CI's `checks` job runs them through `just ci`, and each fails
-# with "not configured" until the project writes it. Keep the recipe names; the workflows and runbooks call them.
+# `lint`, `test` and `audit` are the project's slots: once the stack is decided, CI's `checks` job runs them through
+# `just ci`, and each fails with "not configured" until the project writes it. Keep the recipe names; the workflows
+# and runbooks call them.
 
 set dotenv-load := true
 
@@ -12,7 +13,7 @@ default:
 install:
     pre-commit install --install-hooks
 
-{% if ci_target == 'github-actions' %}
+{% if release_workflow %}
 # Customer-facing smoke checks (.github/smoke.txt) against a deployed environment
 smoke url:
     scripts/smoke.sh {{ "{{" }} url {{ "}}" }}
@@ -24,12 +25,13 @@ security-scope +urls:
     python3 scripts/security-scope.py {{ "{{" }} urls {{ "}}" }}
 
 {% endif %}
-# Every check CI's `checks` job runs; keep it the one place that list lives. Runs all of them and fails at the end,
-# so one failing recipe does not hide the others' results.
+# Every check CI's `checks` job runs; keep it the one place that list lives. The stage sets it (CONSTITUTION.md §4):
+# `explore` asks for tests only, and later stages add lint and the dependency audit. Runs all of them and fails at
+# the end, so one failing recipe does not hide the others' results.
 ci:
     #!/usr/bin/env bash
     status=0
-    for recipe in lint test audit; do
+    for recipe in {{ "test" if stage == "explore" else "lint test audit" }}; do
         "{{ "{{" }} just_executable() {{ "}}" }}" --justfile "{{ "{{" }} justfile() {{ "}}" }}" "$recipe" || { echo "just $recipe failed" >&2; status=1; }
     done
     exit "$status"
