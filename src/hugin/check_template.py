@@ -486,14 +486,19 @@ def table_rows(source: Path, key_header: str) -> dict[str, dict[str, str]]:
     if start is None:
         raise ValueError(f"{source} has no table headed {key_header!r}")
     headers = _cells(lines[start])
-    rows = {}
+    if start + 1 >= len(lines) or not all(re.fullmatch(r":?-+:?", cell) for cell in _cells(lines[start + 1])):
+        raise ValueError(f"{source}:{start + 2}: the table headed {key_header!r} has no separator row")
+    rows: dict[str, dict[str, str]] = {}
     for number, line in enumerate(lines[start + 2:], start + 3):
         if not line.startswith("|"):
             break
         cells = _cells(line)
         if len(cells) != len(headers):
             raise ValueError(f"{source}:{number}: the row has {len(cells)} cells and the header {len(headers)}")
-        rows[cells[0].strip("`")] = dict(zip(headers[1:], cells[1:], strict=True))
+        key = cells[0].strip("`")
+        if key in rows:
+            raise ValueError(f"{source}:{number}: a second row for `{key}`")
+        rows[key] = dict(zip(headers[1:], cells[1:], strict=True))
     return rows
 
 
@@ -529,14 +534,28 @@ def declarations_rendered(project: Path, answers: dict[str, str], tables: Tables
     return errors
 
 
+def variants_cover_sources(tables: Tables) -> list[str]:
+    errors = []
+    for key, rows in tables.items():
+        rendered = {{**BASE, **data}[key] for data in VARIANTS.values()}
+        errors += [f"no variant renders {key} `{value}` from {DECLARATION_SOURCES[key][0]}" for value in rows
+                   if value not in rendered]
+    return errors
+
+
 def help_matches_sources(root: Path, tables: Tables) -> list[str]:
-    copier_yml = " ".join((root / "copier.yml").read_text().split())
+    copier_yml = (root / "copier.yml").read_text()
     errors = []
     for key, rows in tables.items():
         source = DECLARATION_SOURCES[key][0]
+        question = re.search(rf"^{key}:\n((?:[ \t].*\n|\n)*)", copier_yml, re.MULTILINE)
+        if question is None:
+            errors.append(f"copier.yml has no {key} question")
+            continue
+        block = " ".join(question.group(1).split())
         for value, row in rows.items():
             cell = " ".join(next(iter(row.values())).split())
-            if f"{value} = {cell}." not in copier_yml:
+            if f"{value} = {cell}." not in block:
                 errors.append(f"copier.yml: the {key} help does not give {source}'s first cell for `{value}`: {cell}")
     return errors
 
@@ -633,6 +652,7 @@ def run(root: Path) -> int:
         failures += declarations_required(src, Path(tmp)) + release_needs_stack(src, Path(tmp))
         tables, table_errors = source_tables(root)
         failures += earlier_release_keeps_stack(src, Path(tmp)) + table_errors + help_matches_sources(root, tables)
+        failures += variants_cover_sources(tables)
         update_errors = update_round_trip(src, Path(tmp))
         failures += update_errors
         print(f"update: {'FAIL' if update_errors else 'ok'}")

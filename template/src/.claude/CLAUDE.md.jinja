@@ -5,7 +5,7 @@ Extends praxis-kit's rules in `~/.claude/rules/` (global). Where the two conflic
 
 ## Tenancy mode
 
-**`{{ tenancy_mode }}`**, declared at bootstrap. praxis-kit's `rules/glossary.md` defines the modes:
+**`{{ tenancy_mode }}`**, declared at bootstrap. Its row in praxis-kit's `rules/glossary.md`:
 
 {% if tenancy_mode == "multi-tenant" -%}
 - When to pick: B2B SaaS, multiple customer orgs share one deployment
@@ -21,7 +21,7 @@ Extends praxis-kit's rules in `~/.claude/rules/` (global). Where the two conflic
 
 ## Stage
 
-**`{{ stage }}`**, declared at bootstrap. `CONSTITUTION.md` §4, next to the global `CLAUDE.md`, defines the stages and lists the practices each one switches on:
+**`{{ stage }}`**, declared at bootstrap. Its row in `CONSTITUTION.md` §4, next to the global `CLAUDE.md`, which also lists the practices each stage switches on:
 
 {% if stage == "explore" -%}
 - True of the project: no real users and no real data
