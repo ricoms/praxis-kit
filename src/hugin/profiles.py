@@ -113,7 +113,7 @@ def manifest_path(base: Path, name: str | None = None) -> Path:
 
 def load_manifest(path: Path) -> Manifest:
     if not path.exists():
-        return {"files": {}}
+        return {"files": {}, "profiles": []}
     try:
         data = json.loads(path.read_text())
     except json.JSONDecodeError as error:
@@ -126,11 +126,13 @@ def load_manifest(path: Path) -> Manifest:
             raise ValueError(f"{path}: {rel!r} is not a path inside .claude")
         if not isinstance(entry, dict) or not all(isinstance(entry.get(k), str) for k in ("source", "sha256")):
             raise ValueError(f"{path}: {rel!r} needs a source and a sha256")
+    names = data.setdefault("profiles", [])
+    if not isinstance(names, list) or not all(isinstance(n, str) and n and Path(n).name == n for n in names):
+        raise ValueError(f"{path}: profiles must be a list of profile names")
     return data
 
 
 def _home_relative(path: Path) -> str:
-    """The manifest is committed with a project, so the kit's path is written with ~ instead of the user's home."""
     home = Path.home()
     return f"~/{path.relative_to(home).as_posix()}" if path.is_relative_to(home) else str(path)
 
@@ -140,7 +142,10 @@ def _sha256(path: Path) -> str:
 
 
 def _kit_commit(root: Path) -> str | None:
-    result = subprocess.run(["git", "-C", str(root), "describe", "--always", "--dirty"], capture_output=True, text=True)
+    try:
+        result = subprocess.run(["git", "-C", str(root), "describe", "--always", "--dirty"], capture_output=True, text=True)
+    except FileNotFoundError:
+        return None
     return result.stdout.strip() if result.returncode == 0 else None
 
 
@@ -186,6 +191,11 @@ def _ours(link: Path) -> bool:
     return dest.is_relative_to(CLAUDE_SRC) or dest == REPO / "CONSTITUTION.md"
 
 
+def _kind_entries(base: Path) -> list[Path]:
+    return [p for kind in ("skills", "agents", "commands", "rules") if (base / kind).is_dir()
+            for p in sorted((base / kind).iterdir())]
+
+
 def _prune(base: Path, rel: str) -> None:
     parent = (base / rel).parent
     while parent != base and parent.is_dir() and not any(parent.iterdir()):
@@ -194,28 +204,45 @@ def _prune(base: Path, rel: str) -> None:
 
 
 def install(profiles: list[str], target_root: Path, dry_run: bool = False) -> int:
-    """Copy the profiles into TARGET/.claude, keeping local edits and refusing files the kit did not install."""
+    """Add the profiles to those TARGET/.claude has, keeping local edits and refusing files the kit did not install."""
     base = target_root / ".claude"
-    print(f"=== {'Planning' if dry_run else 'Installing'} {profiles} into {base} ===")
-    merged = _merged(profiles)
     own_path = manifest_path(base)
-    own = load_manifest(own_path)["files"]
+    own_manifest = load_manifest(own_path)
+    own = own_manifest["files"]
+    print(f"=== {'Planning' if dry_run else 'Installing'} {profiles} into {base} ===")
+    for name in own_manifest["profiles"]:
+        if name in profiles:
+            continue
+        if (PROFILES_DIR / f"{name}.json").exists():
+            print(f"  KEEP    profile {name} (installed earlier)")
+            profiles = [*profiles, name]
+        else:
+            print(f"  DROP    profile {name} (the kit no longer has it)")
+    merged = _merged(profiles)
     others: dict[str, str] = {}
     if (base / MANIFESTS).is_dir():
         for m in sorted((base / MANIFESTS).glob("*.json")):
             if m != own_path:
                 others.update({rel: m.stem for rel in load_manifest(m)["files"]})
 
-    legacy = [base / "CLAUDE.md"] if is_shared_root() else []
+    legacy: list[Path] = []
     planned: dict[str, Path] = {}
     for rel, src in _items(merged):
         if not src.exists():
             print(f"  MISS    {rel} (source missing)")
             continue
+        taker = next((others[o] for o in others if o == rel or o.startswith(f"{rel}/")), None)
+        if taker is not None:
+            print(f"  TAKEN   {rel} (installed by {taker}; uninstall it there to switch)")
+            continue
         legacy.append(base / rel)
         planned.update(_files(rel, src))
     unlink = [p for p in legacy if p.is_symlink() and (_ours(p) or not p.exists())]
     foreign_links = [p for p in legacy if p.is_symlink() and p not in unlink]
+    kernel_link = base / "CLAUDE.md"
+    if is_shared_root() and kernel_link.is_symlink() and _ours(kernel_link):
+        unlink.append(kernel_link)
+    unlink += [p for p in _kind_entries(base) if p.is_symlink() and not p.exists() and _ours(p) and p not in unlink]
     for link in unlink:
         print(f"  UNLINK  {link.relative_to(base)} (a symlink from an earlier install)")
 
@@ -230,9 +257,6 @@ def install(profiles: list[str], target_root: Path, dry_run: bool = False) -> in
         new = _sha256(src)
         entry = {"source": src.relative_to(src_root(src)).as_posix(), "sha256": new}
         if any(Path(rel).is_relative_to(p.relative_to(base)) for p in foreign_links):
-            continue
-        if rel in others:
-            print(f"  TAKEN   {rel} (installed by {others[rel]}; uninstall it there to switch)")
             continue
         blocker = next((d for d in [base / rel, *(base / rel).parents] if d.is_relative_to(base) and d != base
                         and d.exists() and (d.is_file() != (d == base / rel))), None)
@@ -279,6 +303,9 @@ def install(profiles: list[str], target_root: Path, dry_run: bool = False) -> in
         print("Dry run: nothing was changed.")
         return 0
 
+    record: Manifest = {"commit": _kit_commit(CLAUDE_SRC.parent), "files": files, "profiles": profiles}
+    if target_root == Path.home():
+        record["kit"] = _home_relative(CLAUDE_SRC.parent)
     for link in unlink:
         link.unlink()
     for rel in writes:
@@ -287,9 +314,6 @@ def install(profiles: list[str], target_root: Path, dry_run: bool = False) -> in
     for rel in removes:
         (base / rel).unlink()
         _prune(base, rel)
-    record: Manifest = {"commit": _kit_commit(CLAUDE_SRC.parent), "files": files}
-    if target_root == Path.home():
-        record["kit"] = _home_relative(CLAUDE_SRC.parent)
     own_path.parent.mkdir(parents=True, exist_ok=True)
     partial = own_path.with_suffix(".json.tmp")
     partial.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
@@ -306,6 +330,10 @@ def install(profiles: list[str], target_root: Path, dry_run: bool = False) -> in
 
 def src_root(src: Path) -> Path:
     return REPO if src == REPO / "CONSTITUTION.md" else CLAUDE_SRC.parent
+
+
+def _source(recorded: str) -> Path:
+    return REPO / recorded if recorded == "CONSTITUTION.md" else CLAUDE_SRC.parent / recorded
 
 
 def uninstall(target_root: Path) -> int:
@@ -326,7 +354,7 @@ def uninstall(target_root: Path) -> int:
         else:
             print(f"  KEEP    {rel} (edited here)")
     path.unlink()
-    _prune(base, f"{MANIFESTS}/x")
+    _prune(base, path.relative_to(base).as_posix())
     return 0
 
 
@@ -589,7 +617,7 @@ def cmd_doctor(target_root: Path) -> int:
     manifest = load_manifest(path)
     for rel, entry in sorted(manifest["files"].items()):
         target = base / rel
-        source = REPO / entry["source"] if entry["source"] == "CONSTITUTION.md" else CLAUDE_SRC.parent / entry["source"]
+        source = _source(entry["source"])
         if not target.is_file():
             print(f"  MISSING   {rel} (re-run the install)")
             problems += 1
@@ -611,9 +639,12 @@ def cmd_doctor(target_root: Path) -> int:
             continue
         for item in sorted(tgt_dir.rglob("*")):
             rel = item.relative_to(base).as_posix()
-            if item.is_symlink():
+            if item.is_symlink() and _ours(item):
+                print(f"  LINK      {rel} → {item.readlink()} (a symlink from an earlier install; re-run the install)")
+                problems += 1
+            elif item.is_symlink():
                 print(f"  LINK      {rel} → {item.readlink()} (not from a manifest; fine if another setup made it)")
-            elif item.is_file() and rel not in owned and not _skipped(item.relative_to(tgt_dir)) and not any(d.is_symlink() for d in item.parents if d.is_relative_to(tgt_dir)):
+            elif item.is_file() and rel not in owned and not _skipped(item.relative_to(tgt_dir)):
                 print(f"  UNTRACKED {rel} (no kit installed it)")
                 problems += 1
     print("OK — installed tree matches the manifest and the kit" if problems == 0 else f"{problems} drift problem(s)")

@@ -86,9 +86,11 @@ project-registry recipes also run with `uv run python`; set `PYTHON` to run them
 
 Files are **copied** from this checkout into `~/.claude/` or a project's `.claude/`. The kit's kernel goes to
 `.claude/rules/praxis-kit.md`, so an existing `CLAUDE.md` is never touched. Each install records what it copied in
-`.claude/.kit-manifests/<kit>.json`, with the checkout's path and commit. Reinstalling updates the files nobody edited,
-keeps and reports the ones somebody did, and removes the ones the kit dropped. A file the kit did not install stops
-the install before anything changes. Edits in this checkout reach an installed copy only when you install again.
+`.claude/.kit-manifests/<kit>.json`, with the kit's commit, and in `~/.claude` the checkout's path. Reinstalling
+updates the files nobody edited, keeps and reports the ones somebody did, and removes the ones the kit dropped. A file
+the kit did not install stops the install before anything changes. Edits in this checkout reach an installed copy only when you install again.
+The manifest also records the installed profiles, and each install adds to them: installing fewer profiles keeps
+the earlier ones. To remove a profile, run `just uninstall` and install the profiles you want.
 
 ```sh
 just install                                   # every profile into ~/.claude, plus the kernel and CONSTITUTION.md

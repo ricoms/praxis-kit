@@ -127,15 +127,18 @@ projects-sync-all:
         exit 1
     fi
     {{python}} -c "
-    import json, subprocess
+    import json, subprocess, sys
     d = json.load(open('projects.json'))
     repo = '{{repo_dir}}'
     profiles = ['uv', 'run', '--no-dev', '--project', repo, 'hugin', 'profiles', '--root', repo]
+    failed = []
     for name, p in d.get('projects', {}).items():
         print(f'=== {name} ===')
         cmd = profiles + ['install-project', p['path']] + p['profiles']
-        subprocess.run(cmd, check=True)
+        if subprocess.run(cmd).returncode != 0:
+            failed.append(name)
         print()
+    sys.exit('Not installed: ' + ', '.join(failed) if failed else 0)
     "
 
 # Add a project to projects.json (creates the file from example if missing)

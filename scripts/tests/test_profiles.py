@@ -260,6 +260,32 @@ class InstallTests(unittest.TestCase):
         self.assertTrue((self.claude / "rules" / "rule2.md").exists())
         self.assertNotIn("rules/rule2.md", self.manifest()["files"])
 
+    def test_installing_fewer_profiles_keeps_the_profiles_installed_before(self):
+        _write(self.kit / "claude" / "rules" / "extra.md", "Extra.\n")
+        _profile(self.kit, "extra", {"description": "extra", "rules": ["extra.md"]})
+        self.run_install(("base", "extra"))
+        code, out = self.run_install(("extra",))
+        self.assertEqual(code, 0)
+        self.assertNotIn("REMOVE", out)
+        self.assertTrue((self.claude / "skills" / "skillA" / "SKILL.md").exists())
+        self.assertEqual(sorted(self.manifest()["profiles"]), ["base", "extra"])
+
+    def test_a_recorded_profile_the_kit_deleted_is_dropped_with_its_files(self):
+        _write(self.kit / "claude" / "rules" / "extra.md", "Extra.\n")
+        _profile(self.kit, "extra", {"description": "extra", "rules": ["extra.md"]})
+        self.run_install(("base", "extra"))
+        (self.kit / "profiles" / "extra.json").unlink()
+        code, out = self.run_install()
+        self.assertEqual(code, 0)
+        self.assertIn("DROP    profile extra", out)
+        self.assertIn("REMOVE  rules/extra.md", out)
+        self.assertEqual(self.manifest()["profiles"], ["base"])
+
+    def test_a_manifest_whose_profiles_are_not_names_is_rejected(self):
+        _write(self.claude / ".kit-manifests" / "praxis-kit.json", json.dumps({"files": {}, "profiles": "base"}))
+        with self.assertRaises(ValueError):
+            self.run_install()
+
     def test_an_existing_file_the_kit_did_not_install_stops_the_install(self):
         _write(self.claude / "rules" / "rule1.md", "local content\n")
         code, out = self.run_install()
@@ -303,6 +329,30 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("REFUSE  rules/rule1.md is a symlink", out)
         self.assertEqual((self.claude / "rules" / "rule1.md").readlink(), other)
+
+    def test_a_users_claude_md_symlink_into_another_tree_is_left_alone(self):
+        mine = _write(self.base / "dotfiles" / "CLAUDE.md", "mine\n")
+        self.claude.mkdir(parents=True)
+        (self.claude / "CLAUDE.md").symlink_to(mine)
+        code, _ = self.run_install()
+        self.assertEqual(code, 0)
+        self.assertEqual((self.claude / "CLAUDE.md").readlink(), mine)
+
+    def test_a_dangling_symlink_into_the_kit_is_removed(self):
+        (self.claude / "skills").mkdir(parents=True)
+        (self.claude / "skills" / "gone").symlink_to(self.kit / "claude" / "skills" / "gone")
+        _, out = self.run_install()
+        self.assertIn("UNLINK  skills/gone", out)
+        self.assertFalse((self.claude / "skills" / "gone").is_symlink())
+
+    def test_an_item_another_kit_owns_any_file_of_is_taken_whole(self):
+        _write(self.overlay / "claude" / "skills" / "skillA" / "SKILL.md", "---\nname: skillA\n---\n")
+        _write(self.overlay / "claude" / "skills" / "skillA" / "extra.md", "Overlay extra.\n")
+        _profile(self.overlay, "overlay", {"description": "overlay", "skills": ["skillA"]})
+        self.run_install()
+        _, out = self.run_install(["overlay"], overlay=self.overlay)
+        self.assertIn("TAKEN   skills/skillA (installed by praxis-kit", out)
+        self.assertFalse((self.claude / "skills" / "skillA" / "extra.md").exists())
 
     def test_dry_run_changes_nothing(self):
         code, out = self.run_install(dry_run=True)
@@ -454,6 +504,12 @@ class DoctorTests(unittest.TestCase):
         problems, out = self.doctor()
         self.assertEqual(problems, 1)
         self.assertIn("UNTRACKED rules/extra.md", out)
+
+    def test_a_symlink_into_the_kit_left_from_an_earlier_install_is_a_problem(self):
+        (self.target / ".claude" / "skills" / "gone").symlink_to(self.kit / "claude" / "skills" / "gone")
+        problems, out = self.doctor()
+        self.assertEqual(problems, 1)
+        self.assertIn("LINK      skills/gone", out)
 
     def test_no_manifest_is_a_problem(self):
         out = io.StringIO()
