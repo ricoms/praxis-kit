@@ -1,0 +1,62 @@
+name: Risk
+description: Something that may go wrong, with an owner and a mitigation.
+labels: ["enhancement", "type:risk"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search open and closed issues first. Write the title as one sentence a busy colleague could act on, with the
+        error or whatever makes this case unusual. Before submitting, read the issue as someone without your context.
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk
+      description: What may happen, and what it would cost if it did.
+    validations:
+      required: true
+  - type: dropdown
+    id: likelihood
+    attributes:
+      label: Likelihood
+      options:
+        - Low
+        - Medium
+        - High
+    validations:
+      required: true
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      options:
+        - Low
+        - Medium
+        - High
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Owner
+      description: The person who watches it and runs the mitigation.
+    validations:
+      required: true
+  - type: textarea
+    id: mitigation
+    attributes:
+      label: Mitigation
+      description: What lowers the likelihood or the impact, and what is done if it happens anyway.
+    validations:
+      required: true
+  - type: input
+    id: signal
+    attributes:
+      label: Early signal
+      description: What would show the risk is starting to happen.
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: The risk is mitigated, accepted by the owner, or can no longer happen.
+    validations:
+      required: true

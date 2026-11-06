@@ -1,0 +1,15 @@
+{
+  "description": "Spec-driven development with a project constitution copied from CONSTITUTION.md for the project's stage and tenancy. Wraps github/spec-kit; the constitution goes to .specify/memory/.",
+  "extends": "base",
+  "skills": [
+    "bootstrapping-with-spec-kit"
+  ],
+  "agents": [],
+  "commands": [
+    "spec-init.md"
+  ],
+  "rules": [],
+  "assets": [
+    "spec-kit"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "praxis-kit projects registry",
+  "type": "object",
+  "required": ["version", "projects"],
+  "properties": {
+    "version": { "const": 1 },
+    "projects": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["path", "profiles"],
+        "properties": {
+          "path": { "type": "string", "description": "Absolute path to the project root" },
+          "profiles": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1,
+            "description": "Profile names to install into the project's .claude/"
+          },
+          "notes": { "type": "string" }
+        }
+      }
+    }
+  }
+}

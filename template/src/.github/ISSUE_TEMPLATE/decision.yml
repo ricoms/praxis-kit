@@ -1,0 +1,45 @@
+name: Decision
+description: A decision that gets an ADR. The issue closes when the ADR merges.
+labels: ["question", "type:decision"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search open and closed issues first. Write the title as one sentence a busy colleague could act on, with the
+        error or whatever makes this case unusual. Before submitting, read the issue as someone without your context.
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What forces the decision now, and what it affects.
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Options
+      description: Each option with what it costs or risks, and whether it is a one-way or two-way door.
+    validations:
+      required: true
+  - type: textarea
+    id: recommendation
+    attributes:
+      label: Recommendation
+  - type: input
+    id: decider
+    attributes:
+      label: Who decides
+      description: The role in docs/raci.md that owns this decision.
+    validations:
+      required: true
+  - type: input
+    id: deadline
+    attributes:
+      label: Decide by (YYYY-MM-DD)
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      value: An ADR in docs/adr records the decision and merges, and this issue closes with it.
+    validations:
+      required: true

@@ -1,0 +1,19 @@
+name: Target setup
+description: >-
+  Logs in to the image registry and the deploy target. This is the project's slot: replace the failing step with the
+  login steps for the project's registry and target. It runs in the plan and build jobs too, which have no GitHub
+  environment, so it reads repository variables only (as JSON in `vars`).
+inputs:
+  environment:
+    description: dev or prod, for a setup that differs per environment
+    required: true
+  vars:
+    description: The workflow's `toJSON(vars)`, so the steps can read the repository's variables
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        echo "::error::.github/actions/target-setup is not written: add the registry and target login steps"
+        exit 1

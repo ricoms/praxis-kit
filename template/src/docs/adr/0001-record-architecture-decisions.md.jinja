@@ -1,0 +1,22 @@
+# 0001 — Record architecture decisions
+
+- Status: accepted
+- Date: {{ "%Y-%m-%d" | strftime }}
+- Deciders: {{ decision_owners if team_delivery else author_name }}
+
+## Context
+
+Decisions that are expensive to reverse get lost in chat and PR threads, and the next person, or the client who
+inherits this repository, cannot tell what was decided, by whom, or why.
+
+## Decision
+
+Each one-way decision gets an ADR here, numbered in sequence: a change that, after it has been live, reverting and
+redeploying would not undo (data reshaped or dropped, a contract others depend on, data that crossed a trust or
+tenancy boundary, an effect that cannot be called back). Reversible decisions are logged and confirmed in a batch
+instead. The named decider accepts an ADR; an accepted ADR is never edited, a new one supersedes it.
+
+## Consequences
+
+Every ADR states its Status and Deciders, and CI rejects one that does not. Writing an ADR costs a screenful; arguing
+one in a proposed PR first is optional.

@@ -1,0 +1,28 @@
+# Service Level Objectives — {{ project_name }}
+
+Real SLIs/objectives are per-project work — this ships as a stub with TODOs, not invented numbers.
+Fill in each section before the first production incident forces you to do it under pressure.
+
+## Service: `{{ project_slug }}`
+
+**SLI spec** — <!-- TODO: pick 2-3 signals that actually matter for this service, e.g.: -->
+- Availability: proportion of requests returning non-5xx
+- Latency: proportion of requests completing under `<TODO>ms`
+- (Most hosting platforms already report request count, latency and error rate — start there before adding custom
+  instrumentation)
+
+**Objective + measurement window** — <!-- TODO -->
+- Target: `<TODO>%` of requests meet the SLI above, measured over a rolling `<TODO>`-day window
+
+**Error-budget policy** — <!-- TODO, a paragraph not a doc -->
+What happens when the budget is exhausted (freeze non-critical deploys? page someone? both?) —
+write the actual policy your team will follow, not a placeholder that sounds good.
+
+<!-- A user-facing frontend gets its own section: its SLIs differ in kind (Core Web Vitals, client-error rate). -->
+
+## Alert → playbook links
+
+Every alert definition should link the runbook row it maps to — see
+[`runbooks/ci-cd-troubleshooting.md`](runbooks/ci-cd-troubleshooting.md){% if release_workflow %} and
+[`runbooks/rollback.md`](runbooks/rollback.md){% endif %}. An alert with no playbook row is an alert nobody
+knows how to answer at 3am — fix the gap on whichever side is missing.

@@ -1,0 +1,38 @@
+name: Client question
+description: One question for the client. Check it internally, then send it and add `asked`.
+labels: ["question", "owner:{{ client_owner_label }}"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search open and closed issues first. Write the title as one sentence a busy colleague could act on, with the
+        error or whatever makes this case unusual. Before submitting, read the issue as someone without your context.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: One question. Split it if it needs two answers.
+    validations:
+      required: true
+  - type: textarea
+    id: recommendation
+    attributes:
+      label: Our recommendation
+    validations:
+      required: true
+  - type: input
+    id: default
+    attributes:
+      label: If there is no answer by the deadline, we will
+    validations:
+      required: true
+  - type: input
+    id: blocks
+    attributes:
+      label: What it blocks
+  - type: input
+    id: deadline
+    attributes:
+      label: Answer needed by (YYYY-MM-DD)
+    validations:
+      required: true

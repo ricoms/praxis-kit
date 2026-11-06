@@ -1,0 +1,10 @@
+# Last matching pattern wins. A pattern with no owner leaves those files unowned, so no reviewer is requested.
+
+*                 {{ code_owners }}
+/.github/         {{ code_owners }}
+
+*.md
+/docs/
+/docs/runbooks/   {{ code_owners }}
+/docs/adr/        {{ decision_owners }}
+/.claude/         {{ code_owners }}

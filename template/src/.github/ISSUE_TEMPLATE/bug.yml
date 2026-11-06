@@ -1,0 +1,50 @@
+name: Bug
+description: The system behaved incorrectly against intent, such as wrong output, a crash or a silent failure.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search open and closed issues first. Write the title as one sentence a busy colleague could act on, with the
+        error or whatever makes this case unusual. Before submitting, read the issue as someone without your context.
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: The observed behaviour, with the exact error text if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: intent
+    attributes:
+      label: What should have happened
+      description: The intended behaviour, and where it is stated, such as a spec, an ADR or the docs.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The smallest steps or input that show it.
+  - type: textarea
+    id: tried
+    attributes:
+      label: What I already tried
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Versions, commit, logs, request IDs or a link to the failing run. Paste errors and logs as text, not screenshots.
+  - type: textarea
+    id: related
+    attributes:
+      label: Related issues
+      description: Issues or PRs you found that look similar, and why they don't cover this one.
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: How anyone can tell it is fixed.
+      value: A regression test that fails on the current code passes, and the case above behaves as intended.
+    validations:
+      required: true

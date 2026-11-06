@@ -1,0 +1,259 @@
+name: Release
+
+# A pre-release builds the image once and deploys it to dev. Marking it final promotes that same digest to prod
+# without building. A final release on a commit that was never pre-released builds once and goes straight to prod.
+#   gh release create v1.4.0-rc.1 --prerelease --generate-notes    # dev
+#   gh release edit v1.4.0-rc.1 --prerelease=false                  # promote to prod
+# workflow_dispatch is break-glass: build the selected ref once and deploy it to the chosen environment.
+# A rollback dispatches on an earlier release tag with rollback=true: it redeploys the image that release pushed,
+# without building, testing or migrating, through the same deploy and smoke checks.
+#   gh workflow run release.yml --ref v1.3.0 -f environment=prod -f rollback=true
+#
+# The project fills four slots: the IMAGE_REPOSITORY repository variable, .github/actions/target-setup (registry and
+# cloud login), scripts/deploy.sh (current, release, revert) and, if it migrates a database, scripts/migrate.sh, which
+# gets the environment's DATABASE_URL secret and no other.
+on:
+  release:
+    types: [prereleased, released]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy the selected ref to
+        type: choice
+        options: [dev, prod]
+      rollback:
+        description: Redeploy the image this ref's release pushed, without building, testing or migrating
+        type: boolean
+        default: false
+
+# One release at a time per environment; never cancel a half-applied deploy.
+concurrency:
+  group: release-${{ "{{" }} inputs.environment || (github.event.action == 'prereleased' && 'dev' || 'prod') {{ "}}" }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: read
+  id-token: write
+
+env:
+  IMAGE_REPOSITORY: ${{ "{{" }} vars.IMAGE_REPOSITORY {{ "}}" }}
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ "{{" }} steps.plan.outputs.environment {{ "}}" }}
+      mode: ${{ "{{" }} steps.plan.outputs.mode {{ "}}" }}
+      image: ${{ "{{" }} steps.plan.outputs.image {{ "}}" }}
+      skipped_dev: ${{ "{{" }} steps.plan.outputs.skipped_dev {{ "}}" }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check the registry slot
+        run: |
+          [ -n "$IMAGE_REPOSITORY" ] || { echo "::error::set the IMAGE_REPOSITORY repository variable (Settings → Variables)"; exit 1; }
+
+      - name: Log in to the registry
+        if: github.event.action == 'released' || inputs.rollback
+        uses: ./.github/actions/target-setup
+        with:
+          environment: ${{ "{{" }} inputs.environment || 'prod' {{ "}}" }}
+          vars: ${{ "{{" }} toJSON(vars) {{ "}}" }}
+
+      - name: Decide build or promote
+        id: plan
+        env:
+          ACTION: ${{ "{{" }} github.event.action {{ "}}" }}
+          DISPATCH_ENVIRONMENT: ${{ "{{" }} inputs.environment {{ "}}" }}
+          ROLLBACK: ${{ "{{" }} inputs.rollback {{ "}}" }}
+          GH_TOKEN: ${{ "{{" }} github.token {{ "}}" }}
+          SHA: ${{ "{{" }} github.sha {{ "}}" }}
+        run: |
+          if [ "$ROLLBACK" = "true" ]; then
+            [ -n "$DISPATCH_ENVIRONMENT" ] || { echo "::error::a rollback needs the environment input"; exit 1; }
+            [ "$GITHUB_REF_TYPE" = "tag" ] || { echo "::error::dispatch a rollback on a release tag, not ${GITHUB_REF_TYPE:-?} ${GITHUB_REF_NAME:-}"; exit 1; }
+            deployed=false
+            for id in $(gh api "repos/${GITHUB_REPOSITORY}/deployments?sha=${SHA}&per_page=20" --jq '.[].id'); do
+              # Superseded deployments turn inactive, so look for any success in the history, not the latest state.
+              if [ "$(gh api "repos/${GITHUB_REPOSITORY}/deployments/${id}/statuses?per_page=100" \
+                  --jq '[.[].state] | index("success") != null')" = "true" ]; then
+                deployed=true
+                break
+              fi
+            done
+            $deployed || { echo "::error::${SHA} never reached a successful deployment; pick a release that did"; exit 1; }
+            code=0
+            digest=$(scripts/image-digest.sh "${IMAGE_REPOSITORY}:${SHA}") || code=$?
+            if [ "$code" -ne 0 ]; then
+              [ "$code" -eq 2 ] && echo "::error::no released image for ${SHA}; dispatch the rollback on a release tag this pipeline built"
+              exit 1
+            fi
+            {
+              echo "environment=$DISPATCH_ENVIRONMENT"
+              echo "mode=rollback"
+              echo "image=${IMAGE_REPOSITORY}@${digest}"
+            } >> "$GITHUB_OUTPUT"
+          elif [ -n "$DISPATCH_ENVIRONMENT" ]; then
+            echo "environment=$DISPATCH_ENVIRONMENT" >> "$GITHUB_OUTPUT"
+            echo "mode=build" >> "$GITHUB_OUTPUT"
+          elif [ "$ACTION" = "prereleased" ]; then
+            echo "environment=dev" >> "$GITHUB_OUTPUT"
+            echo "mode=build" >> "$GITHUB_OUTPUT"
+          else
+            echo "environment=prod" >> "$GITHUB_OUTPUT"
+            deployment=$(gh api "repos/${GITHUB_REPOSITORY}/deployments?sha=${SHA}&environment=dev&per_page=1" --jq '.[0].id // empty')
+            dev_state=""
+            if [ -n "$deployment" ]; then
+              dev_state=$(gh api "repos/${GITHUB_REPOSITORY}/deployments/${deployment}/statuses?per_page=1" --jq '.[0].state // empty')
+            fi
+            code=0
+            digest=$(scripts/image-digest.sh "${IMAGE_REPOSITORY}:${SHA}") || code=$?
+            if [ "$code" -eq 0 ]; then
+              if [ "$dev_state" != "success" ]; then
+                echo "::error::this commit's image exists but its latest dev deployment is '${dev_state:-none}'. Fix it and publish a new pre-release, or use the break-glass dispatch"
+                exit 1
+              fi
+              echo "mode=promote" >> "$GITHUB_OUTPUT"
+              echo "image=${IMAGE_REPOSITORY}@${digest}" >> "$GITHUB_OUTPUT"
+            elif [ "$code" -eq 2 ]; then
+              if [ "$dev_state" = "success" ]; then
+                echo "::error::dev passed for this commit but its image is missing from the registry"
+                exit 1
+              fi
+              echo "mode=build" >> "$GITHUB_OUTPUT"
+              echo "skipped_dev=true" >> "$GITHUB_OUTPUT"
+            else
+              exit 1
+            fi
+          fi
+
+  # The released commit's tests, without CI's own image build: the build job builds and tests the image, once.
+  gates:
+    needs: plan
+    if: needs.plan.outputs.mode == 'build'
+    uses: ./.github/workflows/ci.yml
+    with:
+      skip_image: true
+
+  build:
+    needs: [plan, gates]
+    if: needs.plan.outputs.mode == 'build'
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ "{{" }} steps.push.outputs.image || steps.existing.outputs.image {{ "}}" }}
+    env:
+      SHA: ${{ "{{" }} github.sha {{ "}}" }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Log in to the registry
+        uses: ./.github/actions/target-setup
+        with:
+          environment: ${{ "{{" }} needs.plan.outputs.environment {{ "}}" }}
+          vars: ${{ "{{" }} toJSON(vars) {{ "}}" }}
+
+      - name: Reuse this commit's image if it exists
+        id: existing
+        run: |
+          code=0
+          digest=$(scripts/image-digest.sh "${IMAGE_REPOSITORY}:${SHA}") || code=$?
+          if [ "$code" -eq 0 ]; then
+            echo "image=${IMAGE_REPOSITORY}@${digest}" >> "$GITHUB_OUTPUT"
+          elif [ "$code" -ne 2 ]; then
+            exit 1
+          fi
+
+      - name: Build the image once
+        if: steps.existing.outputs.image == ''
+        run: scripts/build-image.sh candidate
+
+      - name: Start it and run the smoke checks
+        if: steps.existing.outputs.image == ''
+        run: scripts/image-smoke.sh candidate
+
+      - name: Push the tested image
+        id: push
+        if: steps.existing.outputs.image == ''
+        run: |
+          docker tag candidate "${IMAGE_REPOSITORY}:${SHA}"
+          docker push "${IMAGE_REPOSITORY}:${SHA}"
+          echo "image=$(docker inspect --format='{{ "{{" }}index .RepoDigests 0{{ "}}" }}' "${IMAGE_REPOSITORY}:${SHA}")" >> "$GITHUB_OUTPUT"
+
+  # One job per environment, so GitHub records one deployment per release run: the promotion check reads it.
+  deploy:
+    needs: [plan, build]
+    if: ${{ "{{" }} !cancelled() && !failure() && (needs.build.result == 'success' || needs.plan.outputs.mode == 'promote' || needs.plan.outputs.mode == 'rollback') {{ "}}" }}
+    environment: ${{ "{{" }} needs.plan.outputs.environment {{ "}}" }}
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: ${{ "{{" }} needs.plan.outputs.environment {{ "}}" }}
+      DEPLOY_VARS: ${{ "{{" }} toJSON(vars) {{ "}}" }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Log in to the target
+        uses: ./.github/actions/target-setup
+        with:
+          environment: ${{ "{{" }} needs.plan.outputs.environment {{ "}}" }}
+          vars: ${{ "{{" }} toJSON(vars) {{ "}}" }}
+
+      # Forward-only, right before this environment gets the new version. A rollback skips it: migrations work with
+      # the previous release, and the older code cannot migrate a newer schema. No scripts/migrate.sh, no migration.
+      - name: Install the toolchain for migrations
+        if: needs.plan.outputs.mode != 'rollback' && hashFiles('scripts/migrate.sh') != ''
+        uses: ./.github/actions/toolchain
+
+      - name: Migrate
+        if: needs.plan.outputs.mode != 'rollback' && hashFiles('scripts/migrate.sh') != ''
+        env:
+          DATABASE_URL: ${{ "{{" }} secrets.DATABASE_URL {{ "}}" }}
+        run: scripts/migrate.sh "$ENVIRONMENT"
+
+      - name: Record the serving revision
+        id: previous
+        run: |
+          revision=$(scripts/deploy.sh current "$ENVIRONMENT")
+          echo "revision=${revision}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy
+        env:
+          IMAGE: ${{ "{{" }} needs.build.outputs.image || needs.plan.outputs.image {{ "}}" }}
+        run: scripts/deploy.sh release "$ENVIRONMENT" "$IMAGE"
+
+      - name: Health and customer smoke checks
+        env:
+          APP_URL: ${{ "{{" }} vars.APP_URL {{ "}}" }}
+          PREVIOUS: ${{ "{{" }} steps.previous.outputs.revision {{ "}}" }}
+        run: |
+          healthy=false
+          for _ in $(seq 1 30); do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' "${APP_URL%/}/health") || code=000
+            if [ "$code" = "200" ]; then healthy=true; break; fi
+            sleep 5
+          done
+          if $healthy && scripts/smoke.sh "$APP_URL"; then exit 0; fi
+          if [ -n "$PREVIOUS" ]; then
+            scripts/deploy.sh revert "$ENVIRONMENT" "$PREVIOUS"
+            echo "::error::checks failed; traffic is back on ${PREVIOUS}. See docs/runbooks/rollback.md"
+          else
+            echo "::error::checks failed on the first deploy; there is no previous revision to roll back to"
+          fi
+          exit 1
+
+      - name: Summary
+        env:
+          MODE: ${{ "{{" }} needs.plan.outputs.mode {{ "}}" }}
+          IMAGE: ${{ "{{" }} needs.build.outputs.image || needs.plan.outputs.image {{ "}}" }}
+          SKIPPED_DEV: ${{ "{{" }} needs.plan.outputs.skipped_dev {{ "}}" }}
+        run: |
+          {
+            echo "Deployed \`${IMAGE}\` to **${ENVIRONMENT}** (${MODE})."
+            if [ "$SKIPPED_DEV" = "true" ]; then
+              echo ""
+              echo "This version was not pre-released, so it went to prod without running in dev first."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$SKIPPED_DEV" = "true" ]; then
+            echo "::notice::this version went to prod without a pre-release in dev"
+          fi

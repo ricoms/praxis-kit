@@ -1,0 +1,40 @@
+# Runbooks — {{ project_name }}
+
+Symptom-driven playbooks. Each links the alert/failure it's meant to be reached from — if you're
+reading one cold, start with `just --list` for the actual command surface.
+
+## Index
+
+| Doc | Covers |
+|---|---|
+| [`ci-cd-troubleshooting.md`](ci-cd-troubleshooting.md) | CI job failures{% if release_workflow %}, release and deploy failures{% endif %} |
+{% if release_workflow %}
+| [`rollback.md`](rollback.md) | Rolling back to a previous release through the pipeline |
+{% endif %}
+{% if team_delivery %}
+| [`board.md`](board.md) | Board fields, close-out, daily digest, labels — setup and failures |
+| [`security-testing.md`](security-testing.md) | Preparing, running and closing a pentest or external scan |
+| [`review-and-merge.md`](review-and-merge.md) | Ruleset, CODEOWNERS, required checks — applying and unblocking |
+| [`hand-over.md`](hand-over.md) | What the team does when this repository passes to the client |
+{% endif %}
+| [`rotations.log`](rotations.log) | Append-only record of every secret rotation |
+| [`incidents/`](incidents/) | Blameless postmortems — one file per production incident |
+| [`../slo.md`](../slo.md) | SLIs, objectives, error-budget policy (not a runbook, but lives alongside these) |
+
+## Secrets inventory (names only — never values)
+
+GitHub Actions secrets this repo's workflows read. Rotate per
+`~/.claude/rules/security/secrets-lifecycle.md`; audit access via GitHub's own secret-access log.
+
+| Secret | Used by | Purpose |
+|---|---|---|
+{% if release_workflow %}
+| `DATABASE_URL` | `release.yml` (`deploy` job) | Only if the project writes `scripts/migrate.sh`: one per GitHub environment (`dev`, `prod`), that environment's connection string for the forward-only migration |
+{% endif %}
+{% if team_delivery %}
+| `PROJECT_TOKEN` | `close-out.yml` | Writes board fields; the default token cannot write to projects |
+| `SLACK_WEBHOOK_URL` | `digest.yml` | Optional; posts the daily waiting digest |
+{% endif %}
+{% if not release_workflow and not team_delivery %}
+| _(none yet)_ | | No workflow in this repo currently reads a `secrets.*` value |
+{% endif %}

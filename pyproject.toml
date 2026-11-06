@@ -1,0 +1,24 @@
+[project]
+name = "hugin"
+version = "0.1.0"
+description = "praxis-kit's tooling: profiles, checks, snapshots, and adapters over adopted code-analysis tools."
+requires-python = ">=3.13,<3.15"
+dependencies = []
+
+[project.scripts]
+hugin = "hugin.cli:main"
+
+[dependency-groups]
+dev = ["mypy>=2.4.1,<3"]
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv]
+exclude-newer = "3 days"
+
+[tool.mypy]
+strict = true
+python_version = "3.13"
+files = ["src/hugin"]

@@ -1,0 +1,101 @@
+# {{ project_name }} — Project Instructions
+
+Extends `~/.claude/CLAUDE.md` (global). Where the two conflict, this file wins. Neither file overrides
+`CONSTITUTION.md`.
+
+## Tenancy mode
+
+**`{{ tenancy_mode }}`** (declared at bootstrap; see global CLAUDE.md `## Tenancy` for what this implies)
+
+{% if tenancy_mode == "multi-tenant" -%}
+Tenant-scoping rules apply NON-NEGOTIABLY:
+- Every data-touching endpoint filters by `org_id` from JWT claims
+- Every multi-tenant table has an `org_id` column with an index prefixed by it
+- Cross-tenant access returns 404, not 403 (no existence disclosure)
+- Apply the `isolating-multi-tenant-llm` skill for any LLM-touching code
+{%- elif tenancy_mode == "single-tenant" -%}
+User-level ownership checks apply NON-NEGOTIABLY:
+- Every data-touching endpoint verifies `object.owner_id == current_user.id`
+- NO `tenant_id` / `org_id` column on tables
+- Auth + RBAC still required
+{%- else -%}
+No scoping rules apply. Auth is OPTIONAL. The following remain required regardless:
+- Input validation at boundaries
+- SSRF protection on outbound requests
+- Security headers + secrets lifecycle (per global rules)
+- Supply chain rules (upper-bound pinning, maintenance assessment)
+{%- endif %}
+
+
+## Stage
+
+**`{{ stage }}`** (declared at bootstrap; `CONSTITUTION.md` §4, next to the global `CLAUDE.md`, lists the practices each stage switches on)
+
+{% if stage == "explore" -%}
+No real users and no real data. Leaves the stage when the first real user or real record arrives, or the code is thrown away.
+{%- elif stage == "build" -%}
+Real users or real data, but nobody has been promised availability. Leaves the stage when availability is promised, by a contract, a service level or a launch.
+{%- elif stage == "run" -%}
+Availability is promised, and the code changes actively. Leaves the stage when change is mostly fixes and upgrades.
+{%- else -%}
+Availability is promised, and change is mostly fixes and upgrades. Leaves the stage when it is retired or rebuilt.
+{%- endif %}
+
+
+Changing stage is a decision with an owner: record it here and in an ADR.
+
+## Domain
+
+{{ description }}
+
+## Stack
+
+To be defined: the languages, frameworks, database and deploy target, the users' language, and how the project fills
+its slots: `.github/actions/toolchain`, the justfile's `lint`, `test` and `audit`, `scripts/build-image.sh`{% if release_workflow %},
+`.github/actions/target-setup`, `scripts/deploy.sh` and, if it migrates a database, `scripts/migrate.sh`{% endif %}. Agents read
+the stack from here; a later change to it is an ADR.
+
+## Modules
+
+To be defined. Name each module by its user-facing purpose (`CONSTITUTION.md` §4), as:
+
+- `module-name` — one-line purpose
+
+## Flows between modules
+
+To be defined. List each cross-module flow as:
+
+- `flow-name` — trigger → condition → effect
+
+{% if team_delivery %}
+## Team delivery
+
+Decision rights: `docs/raci.md`. Topology and communication rules for this team: fill in from
+`praxis-kit/docs/ai-sdlc/practices.md` (Articles II, XIV) and keep them here.
+
+**Agents may, without asking:** branch, change, run `just` checks, open a PR, and close out after a merge.
+**Agents never:** message another person, change an external account, close an estimated issue without asking its
+assignee for Actual and Waiting, or override git identity.
+
+The working agreements in `CONSTITUTION.md` §5 apply as written, except where `docs/agreements.md` records an
+adjustment. Read that file before acting on a working agreement.
+
+- The board is the source for Estimate, Actual, Remaining Work, Waiting and Phase. Actual is days of work; Waiting
+  is days blocked; never add them. Sprints are milestones. See `docs/runbooks/board.md`.
+- Never merge on red. Reviews are not required: the `doors` check labels one-way changes `door:one-way` and
+  recommends a review; CODEOWNERS requests it automatically. Work on a one-way change stops, and the PR does not
+  merge, until its ADR is accepted by the named decider (`CONSTITUTION.md` §5). See `docs/runbooks/review-and-merge.md`.
+- One client question per issue (the *Client question* form), labelled `owner:{{ client_owner_label }}`. Check it
+  with the team, send it within {{ ask_deadline_days }} working days, then add `asked`.
+
+{% endif %}
+## Operational notes
+
+- CI: `{{ ci_target }}`
+- Release workflow: {{ "yes, with slots to fill" if release_workflow else "not rendered" }}
+
+## Status
+
+Bootstrapped from praxis-kit's shared template (`copier.yml` and `template/`) via copier; its answers are in
+`.copier-answers.praxis-kit.yml`. Update this file as the stack, modules and
+flows are defined.

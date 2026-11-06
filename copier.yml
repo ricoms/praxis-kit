@@ -1,0 +1,183 @@
+# Copier template for the delivery machinery a team shares: GitHub workflows with slots for the project's stack,
+# process files, runbooks and the scripts the team practices name. No language, database or cloud is chosen here.
+# See README.md.
+
+_min_copier_version: "9.0"
+_subdirectory: template/src
+_answers_file: .copier-answers.praxis-kit.yml
+_envops:
+  trim_blocks: true
+  lstrip_blocks: true
+
+_exclude:
+  - ".git"
+  - "{% if ci_target != 'github-actions' %}.github{% endif %}"
+  - "{% if ci_target != 'github-actions' %}scripts/smoke.sh{% endif %}"
+  - "{% if ci_target != 'github-actions' %}scripts/image-smoke.sh{% endif %}"
+  - "{% if ci_target != 'github-actions' %}scripts/build-image.sh{% endif %}"
+  - "{% if not release_workflow %}.github/workflows/release.yml{% endif %}"
+  - "{% if not release_workflow %}.github/actions/target-setup{% endif %}"
+  - "{% if not release_workflow %}scripts/deploy.sh{% endif %}"
+  - "{% if not release_workflow %}scripts/image-digest.sh{% endif %}"
+  - "{% if not release_workflow %}docs/runbooks/rollback.md{% endif %}"
+  - "{% if not team_delivery %}.github/ISSUE_TEMPLATE{% endif %}"
+  - "{% if not team_delivery %}.github/scripts{% endif %}"
+  - "{% if not team_delivery %}.github/team-delivery.env{% endif %}"
+  - "{% if not team_delivery %}.github/labels.tsv{% endif %}"
+  - "{% if not team_delivery %}.github/workflows/labels.yml{% endif %}"
+  - "{% if not team_delivery %}.github/workflows/close-out.yml{% endif %}"
+  - "{% if not team_delivery %}.github/workflows/digest.yml{% endif %}"
+  - "{% if not team_delivery %}scripts/board{% endif %}"
+  - "{% if not team_delivery %}docs/runbooks/board.md{% endif %}"
+  - "{% if not team_delivery %}docs/raci.md{% endif %}"
+  - "{% if not team_delivery %}scripts/security-scope.py{% endif %}"
+  - "{% if not team_delivery %}docs/runbooks/security-testing.md{% endif %}"
+  - "{% if not team_delivery %}.github/private-refs.txt{% endif %}"
+  - "{% if not team_delivery %}scripts/private-refs.sh{% endif %}"
+  - "{% if not team_delivery %}.github/doors.toml{% endif %}"
+  - "{% if not team_delivery %}.github/workflows/doors.yml{% endif %}"
+  - "{% if not team_delivery %}.github/CODEOWNERS{% endif %}"
+  - "{% if not team_delivery %}.github/pull_request_template.md{% endif %}"
+  - "{% if not team_delivery %}.github/rulesets{% endif %}"
+  - "{% if not team_delivery %}scripts/repo{% endif %}"
+  - "{% if not team_delivery %}docs/runbooks/review-and-merge.md{% endif %}"
+  - "{% if not team_delivery %}docs/runbooks/hand-over.md{% endif %}"
+
+tenancy_mode:
+  type: str
+  choices:
+    - multi-tenant
+    - single-tenant
+    - single-user
+  help: >-
+    Pick deliberately — wrong mode bakes in friction or risk.
+    multi-tenant = B2B SaaS, multiple customer orgs share one deployment (tenant_id scoping NON-NEGOTIABLE).
+    single-tenant = internal tool / one-customer build / multi-user app for one org (user-level ownership only).
+    single-user = personal tool / research code / single-user CLI (no scoping rules).
+
+stage:
+  type: str
+  choices:
+    - explore
+    - build
+    - run
+    - sustain
+  help: >-
+    Decided by facts, not by how the project feels (CONSTITUTION.md section 4).
+    explore = no real users and no real data.
+    build = real users or real data, but nobody has been promised availability.
+    run = availability is promised, and the code changes actively.
+    sustain = availability is promised, and change is mostly fixes and upgrades.
+
+project_name:
+  type: str
+  help: Human-readable project name (e.g., "Acme Gateway")
+
+project_slug:
+  type: str
+  help: Slug (lowercase, hyphens) — used for the project directory and names
+  default: "{{ project_name | lower | replace(' ', '-') }}"
+  validator: "{% if not (project_slug | regex_search('^[a-z][a-z0-9-]*$')) %}must be lowercase, hyphens, start with letter{% endif %}"
+
+description:
+  type: str
+  help: Short one-line description
+
+author_name:
+  type: str
+  default: Your Name
+
+author_email:
+  type: str
+  default: you@example.com
+  secret: true
+
+license:
+  type: str
+  choices:
+    - MIT
+    - Apache-2.0
+    - Proprietary
+  default: Proprietary
+
+ci_target:
+  type: str
+  choices:
+    - github-actions
+    - none
+  default: github-actions
+
+release_workflow:
+  type: bool
+  default: false
+  help: >-
+    Render the release workflow: build the image once, deploy it to dev on a pre-release, promote the same digest to
+    prod, roll back through the pipeline. The project fills its slots: the IMAGE_REPOSITORY variable,
+    .github/actions/target-setup, scripts/deploy.sh and, if it migrates a database, scripts/migrate.sh.
+  validator: >-
+    {% if release_workflow and ci_target != 'github-actions' %}
+    release_workflow requires ci_target 'github-actions'.
+    {% endif %}
+
+team_delivery:
+  type: bool
+  default: false
+  help: >-
+    Multi-developer team with AI agents (docs/ai-sdlc/practices.md in praxis-kit). Adds labels, the client
+    question form, board close-out, the daily waiting digest and the board runbook. Requires ci_target github-actions.
+  validator: >-
+    {% if team_delivery and ci_target != 'github-actions' %}
+    team_delivery requires ci_target 'github-actions'.
+    {% endif %}
+
+client_owner_label:
+  type: str
+  when: "{{ team_delivery }}"
+  default: client
+  help: Suffix of the owner label for items waiting on the client (owner:<this>)
+  validator: >-
+    {% if not (client_owner_label | regex_search('^[A-Za-z0-9][A-Za-z0-9 _.-]*$')) %}
+    letters, digits, spaces, '_', '.' or '-' (it is sourced by bash in .github/team-delivery.env)
+    {% endif %}
+
+team_owner_label:
+  type: str
+  when: "{{ team_delivery }}"
+  default: team
+  help: Suffix of the owner label for items waiting on us (owner:<this>)
+  validator: >-
+    {% if not (team_owner_label | regex_search('^[A-Za-z0-9][A-Za-z0-9 _.-]*$')) %}
+    letters, digits, spaces, '_', '.' or '-' (it is sourced by bash in .github/team-delivery.env)
+    {% endif %}
+
+ask_deadline_days:
+  type: int
+  when: "{{ team_delivery }}"
+  default: 3
+  help: Days a client question may wait between filing and being sent before the digest flags it
+
+code_owners:
+  type: str
+  when: "{{ team_delivery }}"
+  default: "@your-org/your-team"
+  help: Space-separated GitHub users or teams that own code, CI, runbooks and .claude/ in CODEOWNERS
+  validator: >-
+    {% if not (code_owners | regex_search('^@[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)?( @[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)?)*$')) %}
+    space-separated @user or @org/team entries
+    {% endif %}
+
+decision_owners:
+  type: str
+  when: "{{ team_delivery }}"
+  default: "{{ code_owners }}"
+  help: Who is requested to review ADRs under docs/adr/ (the named architecture decider); acceptance is by agreement
+  validator: >-
+    {% if not (decision_owners | regex_search('^@[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)?( @[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)?)*$')) %}
+    space-separated @user or @org/team entries
+    {% endif %}
+
+review_wait_hours:
+  type: int
+  when: "{{ team_delivery }}"
+  default: 24
+  help: Hours a non-draft PR may wait without an outside review before the digest lists it

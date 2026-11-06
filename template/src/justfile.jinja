@@ -1,0 +1,61 @@
+# {{ project_name }} — task runner
+# See docs/runbooks/ for command details.
+#
+# `lint`, `test` and `audit` are the project's slots: CI's `checks` job runs them through `just ci`, and each fails
+# with "not configured" until the project writes it. Keep the recipe names; the workflows and runbooks call them.
+
+set dotenv-load := true
+
+default:
+    @just --list
+
+install:
+    pre-commit install --install-hooks
+
+{% if ci_target == 'github-actions' %}
+# Customer-facing smoke checks (.github/smoke.txt) against a deployed environment
+smoke url:
+    scripts/smoke.sh {{ "{{" }} url {{ "}}" }}
+
+{% endif %}
+{% if team_delivery %}
+# In-scope endpoints for a security test, from the API contract (openapi.json, or API_CONTRACT)
+security-scope +urls:
+    python3 scripts/security-scope.py {{ "{{" }} urls {{ "}}" }}
+
+{% endif %}
+# Every check CI's `checks` job runs; keep it the one place that list lives. Runs all of them and fails at the end,
+# so one failing recipe does not hide the others' results.
+ci:
+    #!/usr/bin/env bash
+    status=0
+    for recipe in lint test audit; do
+        "{{ "{{" }} just_executable() {{ "}}" }}" --justfile "{{ "{{" }} justfile() {{ "}}" }}" "$recipe" || { echo "just $recipe failed" >&2; status=1; }
+    done
+    exit "$status"
+
+# Static checks: formatting, lint, types, architecture boundaries
+lint:
+    @echo "lint is not configured: write this project's static checks in the justfile" >&2; exit 1
+
+# Tests at every tier the stage switches on
+test:
+    @echo "test is not configured: write this project's tests in the justfile" >&2; exit 1
+
+# Dependency and code security checks for the project's languages
+audit:
+    @echo "audit is not configured: write this project's dependency and code audits in the justfile" >&2; exit 1
+
+# Secrets first, so the scan still runs while `audit` is unwritten
+security-scan: secrets audit
+
+secrets:
+    gitleaks detect --source . --no-banner -v
+
+pre-commit:
+    pre-commit run --all-files
+
+docs-index:
+    qmd collection add specs/ --name specs
+    qmd collection add docs/ --name docs
+    qmd embed

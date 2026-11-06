@@ -1,0 +1,16 @@
+{
+  "description": "Multi-developer team with AI agents: work loop, next actions, board, review of delivered work, threat models, specs, docs, velocity, repository snapshots, verifying the path. Pairs with the template's team_delivery option (docs/ai-sdlc/practices.md).",
+  "extends": "base",
+  "skills": [
+    "running-a-work-session",
+    "sequencing-next-actions",
+    "managing-github-issues",
+    "reviewing-delivered-work",
+    "threat-modeling",
+    "bootstrapping-with-spec-kit",
+    "authoring-project-docs",
+    "reading-delivery-velocity",
+    "snapshotting-repositories",
+    "verifying-the-path"
+  ]
+}

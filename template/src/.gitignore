@@ -1,0 +1,28 @@
+# Stack-free entries. Add the stack's build output and caches (language, package manager, infrastructure) here.
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env: local values and secrets never enter git
+.env
+.env.local
+*.env.local
+.envrc.local
+.direnv/
+
+# Tooling
+.qmd/
+.reflex/
+.cursor/
+
+# Reports
+reports/
+docs/security-scans/*.local.md

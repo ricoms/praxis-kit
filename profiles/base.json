@@ -1,0 +1,7 @@
+{
+  "description": "The security scan gate that pairs with the template (extends `minimal`).",
+  "extends": "minimal",
+  "skills": [
+    "scanning-security"
+  ]
+}

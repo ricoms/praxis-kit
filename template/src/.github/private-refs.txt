@@ -1,0 +1,3 @@
+# Content the repository the client inherits must never contain: one extended regex per line.
+# Add your private org and repo names and internal domains. A line containing private-ref-ok is allowed.
+[a-z0-9-]*\.?slack\.com/archives/

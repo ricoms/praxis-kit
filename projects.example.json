@@ -1,0 +1,22 @@
+{
+  "$schema": "./profiles/projects.schema.json",
+  "version": 1,
+  "projects": {
+    "example-team-service": {
+      "path": "/absolute/path/to/your/service",
+      "profiles": [
+        "security",
+        "spec-kit",
+        "team-delivery"
+      ],
+      "notes": "A team service built from the template, with spec-driven work and the team-delivery practices"
+    },
+    "example-solo-tool": {
+      "path": "/absolute/path/to/your/tool",
+      "profiles": [
+        "minimal"
+      ],
+      "notes": "A small project that needs only the always-on rules and core skills"
+    }
+  }
+}

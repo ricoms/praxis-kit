@@ -1,0 +1,4 @@
+# Customer-facing checks run after every deploy: METHOD PATH EXPECTED_STATUS.
+# Replace the second line with real entry paths and the refusals they must return (a 4xx, never a 5xx).
+GET /health 200
+GET /api/v1/smoke-unknown-path 404

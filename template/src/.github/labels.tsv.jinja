@@ -1,0 +1,16 @@
+bug	d73a4a	The system behaved incorrectly against intent
+enhancement	a2eeef	New or changed behaviour, planned work, hardening or debt
+question	d876e3	One question, one issue
+type:task	1d76db	Work with an estimate
+type:story	5319e7	Parent issue of a story's phase sub-issues
+type:decision	b60205	Closes when its ADR merges
+type:risk	fbca04	Has an owner and a mitigation
+owner:{{ client_owner_label }}	e99695	Waiting on the client
+owner:{{ team_owner_label }}	c2e0c6	Waiting on us
+asked	0e8a16	The question was actually sent
+phase:plan	bfdadc	Story phase
+phase:implement	bfdadc	Story phase
+phase:verify	bfdadc	Story phase
+phase:release	bfdadc	Story phase
+door:one-way	b60205	Reverting it after release may not restore an equivalent state
+door:two-way	0e8a16	Revert plus redeploy restores an equivalent state

@@ -1,0 +1,10 @@
+# Secret rotations: one entry per rotation, newest last. Append only; never edit or delete an entry.
+# An entry names the secret and its identifier, never its value or any part of the value.
+#
+# YYYY-MM-DD — Rotated <secret name> in <environment> (<scheduled | compromise | departure>) by <person>
+#   - Approval: <issue link>, approved by <decider> (<before | after, for a compromise>)
+#   - Identifier: old <key id or version> → new <key id or version>
+#   - Consumers rolled: <services or workflows that read it>
+#   - Verification: <how traffic on the new secret was confirmed, with the time in UTC>
+#   - Old secret: disabled <time UTC>, deleted <date>
+#   - Audit: <anomalies found in access logs, or "none">

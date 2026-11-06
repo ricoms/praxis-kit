@@ -1,0 +1,9 @@
+# This repo's own workflows; the template's files are refreshed by hand.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 3

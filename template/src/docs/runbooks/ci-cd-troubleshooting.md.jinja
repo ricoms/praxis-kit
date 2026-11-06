@@ -1,0 +1,52 @@
+# Runbook — CI/CD troubleshooting
+
+The workflow YAML is the source of truth for *what* runs (`.github/workflows/ci.yml`{% if release_workflow %},
+`release.yml`{% endif %}). This playbook covers *why it failed* and *what to run locally* to reproduce it.
+
+## CI (`ci.yml`) — every push/PR to `main`
+
+| Symptom | Fix |
+|---|---|
+| `checks` fails before `just ci` runs | The toolchain action (`.github/actions/toolchain`) could not install the stack; update it when the stack's tools change |
+| `checks` fails with "lint is not configured" (or test, audit) | The project has not written that recipe yet. Fill it in the justfile; CI runs exactly what `just ci` runs |
+| `checks` fails on a lint, test or audit step | Run the same recipe locally (`just lint`, `just test`, `just audit`); `just ci` runs all three and reports every failure |
+{% if release_workflow %}
+| `image` fails with "scripts/build-image.sh is not written" | Write the project's image build in `scripts/build-image.sh`; CI and the release both call it |
+| `image` fails at "Start it and run the smoke checks" | The image builds but does not serve `/health`: read the container logs printed above the failure |
+{% endif %}
+| `gitleaks` job fails | A secret-shaped string landed in the diff. Do NOT just remove it and re-push — treat as a real leak per `~/.claude/rules/security/secrets-lifecycle.md` (rotate if it was ever a real credential) |
+{% if release_workflow %}
+
+## Release (`release.yml`)
+
+`gh release create vX.Y.Z-rc.1 --prerelease --generate-notes` builds the image once, tests it, pushes it and deploys
+it to **dev**. `gh release edit vX.Y.Z-rc.1 --prerelease=false` promotes that same digest to **prod** without
+building, once GitHub's record shows the commit's latest `dev` deployment succeeded. A final release on a commit that
+was never pre-released builds once and goes straight to prod; the run summary says dev was skipped. A bare tag push
+deploys nothing; `workflow_dispatch` is break-glass, and with `rollback=true` on an earlier tag it redeploys that
+release's image ([`rollback.md`](rollback.md)).
+
+The workflow is the same for any target; slots carry the target. `IMAGE_REPOSITORY` (repo variable) is where images
+are pushed. `.github/actions/target-setup` logs in to the registry and the target; it also runs in jobs with no GitHub
+environment, so it reads repository variables only. `scripts/deploy.sh` deploys, reports and reverts, reading the
+environment's variables as JSON (`DEPLOY_VARS`). `scripts/migrate.sh`, if the project writes one, migrates before a
+release and gets the environment's `DATABASE_URL` secret and no other. GitHub environments `dev` and `prod` each need
+`APP_URL`, plus whatever variables the project's slots read.
+
+| Symptom | Fix |
+|---|---|
+| `plan` fails on "Check the registry slot" | Set the `IMAGE_REPOSITORY` repo variable |
+| A job fails with ".github/actions/target-setup is not written" | Write the registry and target login steps in the action |
+| A job fails in "Log in to the registry" or "Log in to the target" | The target-setup action could not log in: check the credentials it reads from the repository variables |
+| `deploy` fails with "scripts/deploy.sh is not written" | Implement `current`, `release` and `revert` for the project's target |
+| `plan` stops: "image exists but its latest dev deployment is …" | The pre-release's dev deploy failed, rolled back or is still running. Fix forward and publish a new pre-release, wait for the running one, or deploy with `workflow_dispatch` if you accept skipping dev |
+| `plan` stops: "dev passed … but its image is missing" | The registry lost an image that dev deployed: check the registry's cleanup policy and that `IMAGE_REPOSITORY` is right |
+| `plan` fails on a final release, printing a registry error | `scripts/image-digest.sh` failed for a reason other than "not found" (login, permissions, `IMAGE_REPOSITORY`). It stops rather than rebuilding, so prod never gets an image dev did not run |
+| A final release built instead of promoting | No image is tagged with that commit: the release points at a different commit than its pre-release. The summary says dev was skipped; promote by marking the original pre-release final instead |
+| `gates` fails | `ci.yml` on the released commit found something the PR run did not (usually a flake or a stale commit). Fix and cut a new pre-release; a red `gates` stops the release |
+| `build` skipped building | The commit's image already exists (a re-run or a dispatch on the same commit), so it is reused; tags are immutable |
+| `build` fails at "Push the tested image" | The registry refused the push: the login in target-setup lacks write access, or `IMAGE_REPOSITORY` is wrong |
+| `deploy` fails at "Migrate" | `scripts/migrate.sh` failed. Migrations are forward-only: never edit one that already ran; write a new one that fixes forward |
+| `deploy` fails at "Record the serving revision" or "Deploy" | `scripts/deploy.sh` failed: read its output, which names the variable or permission it lacked |
+| `deploy` fails its health or smoke checks | Traffic is already back on the previous revision; see [`rollback.md`](rollback.md) before re-releasing |
+{% endif %}

@@ -1,0 +1,10 @@
+# Newest release at least 3 days old, one dependency per PR; security updates ignore the cooldown.
+# Add an entry per package ecosystem the project uses (pip, uv, npm, cargo, docker, terraform, ...).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 3

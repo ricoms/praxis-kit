@@ -1,0 +1,26 @@
+# Personal project registry — never commit
+projects.json
+
+# macOS
+.DS_Store
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs / scratch
+*.log
+!template/src/docs/runbooks/rotations.log
+.bak
+
+# Reference sources: fetched by `just references-fetch`, never committed
+docs/references/*.pdf

@@ -1,0 +1,72 @@
+name: Security test
+description: Rules of engagement for a pentest or security scan. Agree them here before testing starts.
+labels: ["enhancement", "type:task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search open and closed issues first. Write the title as one sentence a busy colleague could act on, with the
+        error or whatever makes this case unusual. Before submitting, read the issue as someone without your context.
+  - type: input
+    id: tester
+    attributes:
+      label: Who tests
+      description: The vendor or team, and the person the findings come from.
+    validations:
+      required: true
+  - type: input
+    id: window
+    attributes:
+      label: Test window (YYYY-MM-DD to YYYY-MM-DD)
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Paste the output of `just security-scope <base-url>` for the environment under test, and list anything out of scope.
+    validations:
+      required: true
+  - type: dropdown
+    id: stance
+    attributes:
+      label: Stance
+      options:
+        - Black box (testers act as ordinary users; no credentials beyond theirs)
+        - Grey box (testers also get documented credentials or architecture notes)
+    validations:
+      required: true
+  - type: textarea
+    id: accounts
+    attributes:
+      label: Test accounts and their removal date
+      description: Every account or group membership created for testers, and the date each is removed.
+    validations:
+      required: true
+  - type: input
+    id: sources
+    attributes:
+      label: Tester source addresses
+      description: So alarms during the window can be matched to the test.
+  - type: input
+    id: findings
+    attributes:
+      label: Findings go to
+    validations:
+      required: true
+  - type: dropdown
+    id: freeze
+    attributes:
+      label: Release freeze during the window
+      options:
+        - Yes, confirmed with the client
+        - "No"
+    validations:
+      required: true
+  - type: input
+    id: alarms
+    attributes:
+      label: Where alarms go during the window
+      description: A team channel, never one person's inbox.
+    validations:
+      required: true

@@ -1,0 +1,31 @@
+# One-way doors (CONSTITUTION.md section 5). The door check labels and comments; it never blocks.
+# Globs: `*` stays in a directory, `**` crosses them. Patterns are regexes on added lines.
+
+[data]
+migrations = ["**/alembic/versions/**", "**/db/migrate/**", "**/db/migration/**", "**/migrations/**"]
+destructive = [
+  'op\.(drop_(column|table)|alter_column|rename_table|execute)\b',
+  '\b(remove_columns?|rename_column|change_column|drop_(join_)?table|rename_table|remove_reference|remove_belongs_to|remove_timestamps)\b',
+  '\bt\.(remove\w*|rename|change)\b',
+  '\bchange_column_null\b.*\bfalse\b',
+  'migrations\.(RemoveField|DeleteModel|RenameField|RenameModel|AlterField|RunSQL|RunPython)\b',
+  '(?i)\b(drop\s+(table|column|schema)|truncate)\b',
+  '(?i)\balter\s+table\b.*\b(drop|rename|alter\s+column)\b',
+  '(?i)^\s*(rename|alter\s+column)\b',
+  '(?i)\b(delete\s+from|update\s+[\w."]+\s+set)\b',
+]
+downgrade_marker = '^\s*def (downgrade|down)\b|^--\s*\+?(?i:(migrate:?|goose)\s*down)'
+
+[contracts]
+paths = []
+openapi = ""
+external_consumers = true
+atomic_frontend_deploy = false
+
+[effects]
+paths = []
+calls = []
+terraform = ['\b(aws_iam_\w+|google_\w+_iam_\w+)\b', '\broles/[\w.]+', '\b(not_)?actions\s*=|"(Not)?Action"']
+
+[governance]
+paths = [".github/CODEOWNERS", ".github/rulesets/**", "semgrep/**", ".gitleaks.toml"]

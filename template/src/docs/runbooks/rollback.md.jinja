@@ -1,0 +1,45 @@
+# Runbook — rollback
+
+The deploy job rolls traffic back by itself when the health check or the customer smoke checks in
+`.github/smoke.txt` fail: `scripts/deploy.sh revert` returns traffic to what served before the deploy, and the job
+fails. Keep `smoke.txt` to real customer entry paths and the refusals they must return.
+
+For a problem found after the checks pass, roll back through the pipeline: dispatch the release workflow on the last
+good release's tag with `rollback=true`. It redeploys the **digest** that release pushed, without building, testing
+or migrating, and runs the same health and smoke checks, with the same automatic traffic rollback if they fail.
+Nothing is applied from a workstation (safety floor, rule 5).
+
+Migrations are forward-only and are skipped: the older code runs against the newer schema, which works because every
+migration keeps the previous release working. If it does not, ship a forward fix instead.
+
+## TL;DR
+
+```sh
+gh release list --limit 10                                          # pick the last good tag
+gh workflow run release.yml --ref v1.3.0 -f environment=prod -f rollback=true
+gh run watch                                                        # pick the new release run
+```
+
+Anyone who can dispatch workflows can roll back; the `prod` GitHub environment's protection rules apply as for any
+deploy. The run refuses a ref that is not a tag, and a tag whose commit never reached a successful deployment, such as
+a pre-release whose dev deploy failed.
+
+The tag's own `release.yml` runs, not `main`'s, so deploy-step fixes made since that release are absent. A tag created
+before the release workflow had the `rollback` input cannot be rolled back to this way: pick a newer tag, or ship a
+forward fix.
+
+## Symptom → Fix
+
+| Symptom | Fix |
+|---|---|
+| Deploy job failed its checks and rolled traffic back | The environment already serves the previous revision. Do NOT re-run the failed release — same code, same failure; fix forward |
+| Bad deploy also ran a migration | **Do not roll back the schema.** Forward-only. Roll back the code if it works against the new schema; otherwise ship a forward-fix migration immediately |
+| Need to roll back further than the last release | Dispatch the rollback on an older tag from `gh release list`; it must have been released through this pipeline |
+| The rollback run fails with "no released image" | The ref was never released here, or its image was deleted from the registry; pick another tag |
+| Rolled back, but the *cause* is still in `main` | A rollback fixes the environment, not the bug. File an issue, then fix forward — the next release will redeploy the same broken commit otherwise |
+
+## Out of scope for this playbook
+
+Rolling back infrastructure (Terraform or any other infrastructure code) is not an image redeploy. Revert the change in
+a pull request and let the project's infrastructure pipeline apply it; if no pipeline applies it, record that as a gap
+in `docs/agreements.md`, with an owner and a date.

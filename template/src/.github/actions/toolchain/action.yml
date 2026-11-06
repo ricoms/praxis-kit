@@ -1,0 +1,8 @@
+name: Toolchain
+description: >-
+  Installs what `just ci` needs on a CI runner. This is the project's slot: add the steps that install the stack
+  (language runtimes, package managers, browsers) after `just`, which stays.
+runs:
+  using: composite
+  steps:
+    - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4

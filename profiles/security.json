@@ -1,0 +1,15 @@
+{
+  "description": "Security review and response: dependency audit, IaC scanning, threat models, data classification, abuse scenarios, secrets rotation, supply-chain incident response, OWASP API and multi-tenant LLM review.",
+  "extends": "base",
+  "skills": [
+    "auditing-deps",
+    "scanning-iac",
+    "threat-modeling",
+    "rotating-secrets",
+    "reviewing-api-security",
+    "responding-to-supply-chain-compromise",
+    "classifying-data",
+    "writing-abuse-scenarios",
+    "isolating-multi-tenant-llm"
+  ]
+}
