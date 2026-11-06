@@ -8,7 +8,6 @@ quadrant = "techniques"
 ring = "adopt"
 why = "Prod runs the image dev tested; promotion is gated on dev's deployment record"
 ref = "docs/ai-sdlc/patterns/release-promotion.md"
-evidence = "deployment record"
 
 [[blip]]
 name = "Automated one-way/two-way door classifier"
@@ -16,7 +15,6 @@ quadrant = "techniques"
 ring = "hold"
 why = "It guessed from paths what the author can judge; the author labels one-way changes"
 ref = "docs/ai-sdlc/practices.md"
-evidence = "An automated door classifier was rejected"
 
 [[blip]]
 name = "3-day dependency cooldown"
@@ -24,7 +22,6 @@ quadrant = "techniques"
 ring = "adopt"
 why = "Newest release at least 3 days old; an advisory fix goes in immediately"
 ref = "claude/skills/auditing-deps/SKILL.md"
-evidence = "minimumReleaseAge: 4320"
 
 [[blip]]
 name = "Smoke checks with rollback to the serving revision"
@@ -32,7 +29,6 @@ quadrant = "techniques"
 ring = "adopt"
 why = "Customer-path checks after traffic shifts; failure returns traffic to the revision that had it"
 ref = "template/src/.github/workflows/release.yml.jinja"
-evidence = "Record the serving revision"
 
 [[blip]]
 name = "One client question per issue"
@@ -40,7 +36,6 @@ quadrant = "techniques"
 ring = "adopt"
 why = "Each question has an owner, a recommendation and a default if the client stays silent"
 ref = "template/src/.github/ISSUE_TEMPLATE/client-question.yml.jinja"
-evidence = "id: default"
 
 [[blip]]
 name = "Foundational scenarios from observed legacy behaviour"
@@ -48,7 +43,6 @@ quadrant = "techniques"
 ring = "adopt"
 why = "Expected values come from what the old system did, written by someone who did not implement it"
 ref = "docs/ai-sdlc/patterns/foundational-contract.md"
-evidence = "by **someone other than the implementer**"
 
 [[blip]]
 name = "Invariant rules with fixtures"
@@ -56,7 +50,6 @@ quadrant = "techniques"
 ring = "adopt"
 why = "Static-analysis rules for the breach vector, each with passing and failing fixtures"
 ref = "docs/ai-sdlc/patterns/invariant-rules.md"
-evidence = "semgrep --test rules/"
 
 [[blip]]
 name = "Verify the path, not the piece"
@@ -64,15 +57,13 @@ quadrant = "techniques"
 ring = "adopt"
 why = "A gate counts as tested only when it fails on the real target with the bug present"
 ref = "claude/skills/verifying-the-path/SKILL.md"
-evidence = "Restore and run again"
 
 [[blip]]
-name = "Private-reference check"
+name = "Private-reference check in CI"
 quadrant = "techniques"
-ring = "adopt"
-why = "Fails CI on links to chat archives and other records the inheriting client cannot open"
-ref = "template/src/scripts/private-refs.sh"
-evidence = "private-ref-ok"
+ring = "hold"
+why = "A pattern list catches only what someone listed; the hand-over runbook searches once, when it matters"
+ref = "template/src/docs/runbooks/hand-over.md"
 
 [[blip]]
 name = "Staging environment"
@@ -80,7 +71,6 @@ quadrant = "techniques"
 ring = "trial"
 why = "Dispatch-only, dropped and reseeded; worth it when testers or the client need a throwaway environment"
 ref = "docs/ai-sdlc/decision-points.md"
-evidence = "add staging (dispatch-only, drop and reseed)"
 
 [[blip]]
 name = "Trunk-based small PRs without a story branch"
@@ -88,7 +78,6 @@ quadrant = "techniques"
 ring = "trial"
 why = "When stories are small enough to land in one PR"
 ref = "docs/ai-sdlc/decision-points.md"
-evidence = "trunk-based small PRs without a story branch"
 
 [[blip]]
 name = "Effort cap on custom static-analysis rules"
@@ -96,7 +85,6 @@ quadrant = "techniques"
 ring = "assess"
 why = "Two rounds of widening, then list the residual forms; rests on one engagement"
 ref = "docs/ai-sdlc/practices.md"
-evidence = "Each rule gets an effort cap"
 
 [[blip]]
 name = "Ledger fed from observed chat and GitHub events"
@@ -104,7 +92,6 @@ quadrant = "techniques"
 ring = "assess"
 why = "Would replace manual writes to the engagement ledger; untried"
 ref = "docs/ai-sdlc/practices.md"
-evidence = "ingest observed chat and GitHub events instead of manual writes"
 
 [[blip]]
 name = "Object-centric event log of the delivery lifecycle"
@@ -112,7 +99,6 @@ quadrant = "techniques"
 ring = "assess"
 why = "Would measure change fail rate, rework and recovery time from issues, PRs, CI runs, releases and deployments; untried"
 ref = "docs/references/2508.00116-no-ai-without-pi.md"
-evidence = "object-centric event log of the delivery lifecycle"
 
 [[blip]]
 name = "Required approving reviews"
@@ -120,7 +106,6 @@ quadrant = "techniques"
 ring = "hold"
 why = "Checks gate the merge and the author owns it; use only where regulation or a contract demands four-eyes"
 ref = "docs/ai-sdlc/practices.md"
-evidence = "Reviews are not required"
 
 [[blip]]
 name = "ADR-link gate"
@@ -128,7 +113,6 @@ quadrant = "techniques"
 ring = "hold"
 why = "Any link satisfies it; a path is not a decision"
 ref = "docs/ai-sdlc/practices.md"
-evidence = "ADR-link gate was rejected"
 
 [[blip]]
 name = "Approval by frozen document package"
@@ -136,7 +120,6 @@ quadrant = "techniques"
 ring = "hold"
 why = "The frozen copy went stale within hours and the approval tag was never used"
 ref = "docs/ai-sdlc/practices.md"
-evidence = "frozen package stale within hours"
 
 # --- Tools ---
 
@@ -146,7 +129,6 @@ quadrant = "tools"
 ring = "adopt"
 why = "Renders the project template; answers are kept for updates"
 ref = "copier.yml"
-evidence = "_answers_file"
 
 [[blip]]
 name = "Dependabot"
@@ -154,7 +136,6 @@ quadrant = "tools"
 ring = "adopt"
 why = "One PR per dependency after the cooldown; security updates skip it"
 ref = "template/src/.github/dependabot.yml.jinja"
-evidence = "default-days: 3"
 
 [[blip]]
 name = "gitleaks"
@@ -162,7 +143,6 @@ quadrant = "tools"
 ring = "adopt"
 why = "Secret scan over full history in CI and at commit"
 ref = "template/src/.github/workflows/ci.yml.jinja"
-evidence = "gitleaks git --redact"
 
 [[blip]]
 name = "actionlint + shellcheck"
@@ -170,7 +150,6 @@ quadrant = "tools"
 ring = "adopt"
 why = "The kit lints every rendered workflow and script"
 ref = "src/hugin/check_template.py"
-evidence = "actionlint"
 
 [[blip]]
 name = "just"
@@ -178,7 +157,6 @@ quadrant = "tools"
 ring = "adopt"
 why = "One task runner for install, test, lint and smoke"
 ref = "template/src/justfile.jinja"
-evidence = "@just --list"
 
 [[blip]]
 name = "Google Cloud Deploy"
@@ -186,7 +164,6 @@ quadrant = "tools"
 ring = "trial"
 why = "More than two environments, canaries or a release console outside GitHub"
 ref = "docs/ai-sdlc/patterns/release-promotion.md"
-evidence = "## Option — Google Cloud Deploy"
 
 [[blip]]
 name = "Binary Authorization attestations"
@@ -194,7 +171,6 @@ quadrant = "tools"
 ring = "trial"
 why = "When signed provenance must be enforced at deploy"
 ref = "docs/ai-sdlc/decision-points.md"
-evidence = "signed attestations with Binary Authorization"
 
 [[blip]]
 name = "Dependabot groups"
@@ -202,7 +178,6 @@ quadrant = "tools"
 ring = "trial"
 why = "Batch two-way, low-trust-risk upgrades in one PR; one-way and high-trust-risk upgrades still go alone"
 ref = "claude/skills/auditing-deps/SKILL.md"
-evidence = "Dependabot `groups`"
 
 # --- Platforms ---
 
@@ -212,7 +187,6 @@ quadrant = "platforms"
 ring = "adopt"
 why = "CI, required checks without required reviews, and the board's fields"
 ref = "template/src/.github/rulesets/main.json.jinja"
-evidence = "\"required_approving_review_count\": 0"
 
 [[blip]]
 name = "Service-account keys in CI"
@@ -220,7 +194,6 @@ quadrant = "platforms"
 ring = "hold"
 why = "Long-lived secrets in CI; short-lived federated credentials (WIF, OIDC) replace them"
 ref = "claude/rules/security/secrets-lifecycle.md"
-evidence = "long-lived keys where WIF/OIDC/STS works"
 
 # --- Languages & frameworks ---
 

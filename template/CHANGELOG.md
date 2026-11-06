@@ -1,5 +1,14 @@
 # Template Changelog
 
+## No private-reference check (2026-11-06)
+
+The template stops rendering `scripts/private-refs.sh`, `.github/private-refs.txt` and CI's `private-refs` job. The
+hand-over runbook searches for the team's private names with `git grep` and `git log` instead. The update deletes
+`.github/private-refs.txt`, so keep the names a team added to it: before updating, run
+`cp .github/private-refs.txt .git/info/private-refs`, which is where the hand-over reads them. On a team, run
+`scripts/repo/apply-ruleset.sh` after the update so the ruleset stops requiring `private-refs`; no PR can merge while
+a required check never reports, so an admin applies it from the update branch before merging it.
+
 ## Less process automation (2026-11-06)
 
 The template stops rendering automation that policed how people work:

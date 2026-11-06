@@ -15,7 +15,6 @@ quadrant = "techniques"
 ring = "adopt"
 why = "Baselines only shrink"
 ref = "docs/ratchet.md"
-evidence = "only shrink"
 """
 
 

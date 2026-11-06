@@ -1,7 +1,7 @@
 # Technology radar
 
 Generated from [`radar.toml`](radar.toml) by `hugin radar render`; edit the data, not this page. Each entry
-links the file that backs it, and the check fails when that file stops saying so. Decisions with their
+links the file that backs it, and the check fails when that file is gone. Decisions with their
 alternatives are in [decision points](decision-points.md).
 
 | Ring | Meaning |
@@ -22,13 +22,13 @@ alternatives are in [decision points](decision-points.md).
 | Adopt | Foundational scenarios from observed legacy behaviour | Expected values come from what the old system did, written by someone who did not implement it | [`docs/ai-sdlc/patterns/foundational-contract.md`](patterns/foundational-contract.md) |
 | Adopt | Invariant rules with fixtures | Static-analysis rules for the breach vector, each with passing and failing fixtures | [`docs/ai-sdlc/patterns/invariant-rules.md`](patterns/invariant-rules.md) |
 | Adopt | Verify the path, not the piece | A gate counts as tested only when it fails on the real target with the bug present | [`claude/skills/verifying-the-path/SKILL.md`](../../claude/skills/verifying-the-path/SKILL.md) |
-| Adopt | Private-reference check | Fails CI on links to chat archives and other records the inheriting client cannot open | [`template/src/scripts/private-refs.sh`](../../template/src/scripts/private-refs.sh) |
 | Trial | Staging environment | Dispatch-only, dropped and reseeded; worth it when testers or the client need a throwaway environment | [`docs/ai-sdlc/decision-points.md`](decision-points.md) |
 | Trial | Trunk-based small PRs without a story branch | When stories are small enough to land in one PR | [`docs/ai-sdlc/decision-points.md`](decision-points.md) |
 | Assess | Effort cap on custom static-analysis rules | Two rounds of widening, then list the residual forms; rests on one engagement | [`docs/ai-sdlc/practices.md`](practices.md) |
 | Assess | Ledger fed from observed chat and GitHub events | Would replace manual writes to the engagement ledger; untried | [`docs/ai-sdlc/practices.md`](practices.md) |
 | Assess | Object-centric event log of the delivery lifecycle | Would measure change fail rate, rework and recovery time from issues, PRs, CI runs, releases and deployments; untried | [`docs/references/2508.00116-no-ai-without-pi.md`](../../docs/references/2508.00116-no-ai-without-pi.md) |
 | Hold | Automated one-way/two-way door classifier | It guessed from paths what the author can judge; the author labels one-way changes | [`docs/ai-sdlc/practices.md`](practices.md) |
+| Hold | Private-reference check in CI | A pattern list catches only what someone listed; the hand-over runbook searches once, when it matters | [`template/src/docs/runbooks/hand-over.md`](../../template/src/docs/runbooks/hand-over.md) |
 | Hold | Required approving reviews | Checks gate the merge and the author owns it; use only where regulation or a contract demands four-eyes | [`docs/ai-sdlc/practices.md`](practices.md) |
 | Hold | ADR-link gate | Any link satisfies it; a path is not a decision | [`docs/ai-sdlc/practices.md`](practices.md) |
 | Hold | Approval by frozen document package | The frozen copy went stale within hours and the approval tag was never used | [`docs/ai-sdlc/practices.md`](practices.md) |
