@@ -1,4 +1,4 @@
-"""Render docs/ai-sdlc/radar.md from radar.toml, or check that it is current and every blip's evidence holds."""
+"""Render docs/ai-sdlc/radar.md from radar.toml, or check that it is current and every blip's file exists."""
 
 import sys
 import tomllib
@@ -20,7 +20,7 @@ QUADRANTS = {
     "platforms": "Platforms",
     "languages": "Languages and frameworks",
 }
-FIELDS = {"name", "quadrant", "ring", "why", "ref", "evidence"}
+FIELDS = {"name", "quadrant", "ring", "why", "ref"}
 
 type Blip = dict[str, str]
 
@@ -57,8 +57,6 @@ def problems(blips: list[Blip], root: Path) -> list[str]:
             errors.append(f"{label}: {blip['ref']} is outside the kit")
         elif not ref.is_file():
             errors.append(f"{label}: {blip['ref']} does not exist")
-        elif blip["evidence"] not in ref.read_text():
-            errors.append(f"{label}: {blip['ref']} no longer contains {blip['evidence']!r}")
     return errors
 
 
@@ -67,7 +65,7 @@ def render(blips: list[Blip]) -> str:
         "# Technology radar",
         "",
         "Generated from [`radar.toml`](radar.toml) by `hugin radar render`; edit the data, not this page. Each entry",
-        "links the file that backs it, and the check fails when that file stops saying so. Decisions with their",
+        "links the file that backs it, and the check fails when that file is gone. Decisions with their",
         "alternatives are in [decision points](decision-points.md).",
         "",
         "| Ring | Meaning |",

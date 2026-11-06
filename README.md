@@ -116,7 +116,7 @@ CI runs these six on every push and pull request to `main`, and `just check` run
 ```sh
 just validate             # every artifact belongs to a profile; agent tool grants cover their skills; spec-kit gates cover every practice
 just budget               # always-on bytes (kernel + rules + skill descriptions) against BUDGET_LIMIT, a ratchet that only goes down
-uv run hugin radar check  # each radar entry's backing file still says what the entry claims
+uv run hugin radar check  # radar.md is current, and each radar entry's backing file exists
 just test                 # fixture tests for hugin's commands, under scripts/tests
 just typecheck            # mypy --strict on src/hugin, as a gate
 just check-template       # renders the template's variants and checks what the practices claim about it
@@ -148,7 +148,7 @@ instead of replaced. `just clean-stale ../my-kit` removes dangling links into it
 | One-way and two-way door | A change is one-way when reverting it after release may not restore an equivalent state, and two-way when a revert and redeploy does. The author labels a one-way pull request `door:one-way` ([constitution §5](CONSTITUTION.md#5-agreements-between-us)). |
 | Slot | A recipe, script, action, repository variable or API contract the project fills for its stack. The template's workflows call slots, and an unfilled slot fails loudly ([template README](template/README.md#the-slots-a-project-fills)). |
 | Board fields | Estimate, Actual, Remaining Work, Waiting and Phase: fields on the team's GitHub Projects board, defined in the board runbook the template renders. |
-| Radar | [`docs/ai-sdlc/radar.md`](docs/ai-sdlc/radar.md): the kit's tool and practice choices, each linked to a file that backs it. A check fails when that file stops saying so. |
+| Radar | [`docs/ai-sdlc/radar.md`](docs/ai-sdlc/radar.md): the kit's tool and practice choices, each linked to a file that backs it. A check fails when that file is gone. |
 | ADR | Architecture decision record: one file per decision under `docs/adr/`, with its status and who decided. |
 | RACI | Who is Responsible, Accountable, Consulted and Informed for each type of decision ([practices, Article IV](docs/ai-sdlc/practices.md#iv-raci-by-decision-type)). |
 | Door classifier | A script that labels each pull request one-way or two-way from the paths it changes. The evidence in `docs/ai-sdlc/evidence.md` was measured with one; the template does not ship it. |

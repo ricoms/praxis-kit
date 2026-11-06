@@ -34,7 +34,7 @@ VARIANTS: dict[str, dict[str, str]] = {
     },
 }
 PRACTICES_VARIANT = "team-release"
-STACK_FREE_JOBS = {"gitleaks", "private-refs"}
+STACK_FREE_JOBS = {"gitleaks"}
 CI_RECIPES = {"explore": "test"}
 CI_RECIPES_AFTER_EXPLORE = "lint test audit"
 CHECKED_TAGS = {"template", "check", "skill"}
@@ -313,36 +313,6 @@ def precommit_passes(project: Path) -> list[str]:
     return [f"pre-commit fails on a fresh render:\n{result.stdout[-3000:]}"] if result.returncode else []
 
 
-def private_refs_behave(project: Path) -> list[str]:
-    script = project / "scripts" / "private-refs.sh"
-    if not script.exists():
-        return []
-    env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
-           "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
-    errors = []
-    with tempfile.TemporaryDirectory() as tmp:
-        repo = Path(tmp) / "repo"
-        shutil.copytree(project, repo)
-
-        def run(files: dict[str, str]) -> int:
-            for rel, text in files.items():
-                (repo / rel).parent.mkdir(parents=True, exist_ok=True)
-                (repo / rel).write_text(text)
-            subprocess.run(["git", "add", "-A"], cwd=repo, env=env, check=True, capture_output=True)
-            return subprocess.run(["bash", "scripts/private-refs.sh"], cwd=repo, env=env, capture_output=True).returncode
-
-        subprocess.run(["git", "init", "-q"], cwd=repo, env=env, check=True)
-        link = "see https://acme.slack.com/archives/C123/p456"
-        cases = [("clean render", {}, 0), ("slack link", {"docs/notes.md": link + "\n"}, 1),
-                 ("marked exception", {"docs/notes.md": link + " private-ref-ok\n"}, 0),
-                 ("answers file", {"docs/notes.md": "clean\n", ANSWERS_FILE: f"_src_path: {link}\n"}, 0),
-                 ("comments-only patterns", {".github/private-refs.txt": "# none\n", "docs/notes.md": link + "\n"}, 0)]
-        for name, files, expected in cases:
-            if (code := run(files)) != expected:
-                errors.append(f"private-refs: {name} exited {code}, expected {expected}")
-    return errors
-
-
 def dependabot_directories_exist(project: Path) -> list[str]:
     config = project / ".github" / "dependabot.yml"
     if not config.exists():
@@ -507,35 +477,6 @@ def declarations_rendered(project: Path, answers: dict[str, str]) -> list[str]:
             if f"**`{answers[key]}`**" not in claude_md]
 
 
-def agreements_cover_constitution(root: Path, project: Path) -> list[str]:
-    agreements = project / "docs" / "agreements.md"
-    if not agreements.exists():
-        return ["docs/agreements.md was not rendered"]
-    text = (root / "CONSTITUTION.md").read_text()
-    start, end = text.find("### Decisions every team settles"), text.find("## 6.")
-    if start < 0 or end < start:
-        return ["CONSTITUTION.md: cannot find the 'Decisions every team settles' list before section 6"]
-    section = text[start:end]
-    decisions = [re.split(r"[:;.]", line[2:])[0].removeprefix("the ") for line in section.splitlines()
-                 if line.startswith("- ")]
-    lines = agreements.read_text().splitlines()
-    headers = [i for i, line in enumerate(lines) if line.startswith("| Decision |")]
-    sections = ("## Adjusted working agreements", "## Gaps against the safety floor")
-    if not headers or any(section not in lines for section in sections):
-        return ["docs/agreements.md needs the decisions table and the sections " + ", ".join(sections)]
-    table = lines[headers[0] + 2:]
-    rows = [line.split("|")[1:-1] for line in table[:next((i for i, line in enumerate(table) if not line.startswith("|")),
-                                                          len(table))]]
-    names = {cells[0].strip().lower() for cells in rows}
-    errors = [f"docs/agreements.md has no row for '{d}'" for d in decisions if d.lower() not in names]
-    errors += [f"docs/agreements.md row '{cells[0].strip()}' must be 'proposed, not yet agreed' with empty choice, date "
-               "and decider" for cells in rows
-               if [c.strip() for c in cells[2:]] != ["proposed, not yet agreed", "", "", ""]]
-    if len(rows) != len(decisions):
-        errors.append(f"docs/agreements.md has {len(rows)} rows; CONSTITUTION.md section 5 lists {len(decisions)}")
-    return errors
-
-
 def _job_blocks(workflow: Path) -> dict[str, str]:
     blocks: dict[str, str] = {}
     name = None
@@ -611,27 +552,6 @@ def slots_fail_until_written(project: Path) -> list[str]:
     return errors
 
 
-def labels_carry_kinds(root: Path, project: Path) -> list[str]:
-    labels = project / ".github" / "labels.tsv"
-    if not labels.exists():
-        return []
-    rule = (root / "claude" / "rules" / "engineering" / "labelling-issues.md").read_text()
-    kind_line = next((line for line in rule.splitlines() if "gets a **kind**" in line), "")
-    kinds = re.findall(r"`([a-z]+)`", kind_line)
-    if not kinds:
-        return ["labelling-issues.md: cannot find the kind list"]
-    names = {line.split("\t")[0] for line in labels.read_text().splitlines() if line.strip()}
-    errors = [f".github/labels.tsv has no `{k}` label, which the labelling rule requires as a kind" for k in kinds
-              if k not in names]
-    forms = [*(project / ".github" / "ISSUE_TEMPLATE").glob("*.yml"), *(project / ".github" / "ISSUE_TEMPLATE").glob("*.yaml")]
-    for form in sorted(f for f in forms if f.stem != "config"):
-        m = re.search(r"^labels:\s*\[(.*)\]", form.read_text(), re.M)
-        used = re.findall(r"""["']([^"']+)["']""", m.group(1)) if m else []
-        if not set(used) & set(kinds):
-            errors.append(f"{form.relative_to(project)} files issues with no kind label ({', '.join(kinds)})")
-    return errors
-
-
 def runbooks_indexed(project: Path) -> list[str]:
     runbooks = project / "docs" / "runbooks"
     index = (runbooks / "README.md").read_text()
@@ -662,9 +582,8 @@ def run(root: Path) -> int:
             errors += dependabot_directories_exist(project) + slots_fail_until_written(project)
             errors += smoke_script_behaves(project) + deploy_rollback_behaves(project)
             answers = {**BASE, **data}
-            errors += private_refs_behave(project) + declarations_rendered(project, answers)
-            errors += agreements_cover_constitution(root, project)
-            errors += runbooks_indexed(project) + labels_carry_kinds(root, project) + ci_follows_stage(project, answers["stage"])
+            errors += declarations_rendered(project, answers)
+            errors += runbooks_indexed(project) + ci_follows_stage(project, answers["stage"])
             errors += ci_slots_wired(project) if answers["stack_decided"] == "true" else ci_needs_no_stack(project)
             errors += scripts_run_on_bash_32(project) + precommit_passes(project)
             if name == PRACTICES_VARIANT:

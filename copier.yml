@@ -28,8 +28,6 @@ _exclude:
   - "{% if not team_delivery %}docs/runbooks/board.md{% endif %}"
   - "{% if not team_delivery %}docs/raci.md{% endif %}"
   - "{% if not team_delivery %}docs/runbooks/security-testing.md{% endif %}"
-  - "{% if not team_delivery %}.github/private-refs.txt{% endif %}"
-  - "{% if not team_delivery %}scripts/private-refs.sh{% endif %}"
   - "{% if not team_delivery %}.github/CODEOWNERS{% endif %}"
   - "{% if not team_delivery %}.github/pull_request_template.md{% endif %}"
   - "{% if not team_delivery %}.github/rulesets{% endif %}"
@@ -118,7 +116,7 @@ stack_decided:
   default: "{{ release_workflow or stage != 'explore' }}"
   help: >-
     The stack is decided: its ADR is accepted, or an existing codebase already runs on it. Until then CI runs only the
-    checks that need no stack (the secrets scan and, on a team, the private-reference check), so a fresh
+    checks that need no stack (the secrets scan), so a fresh
     render passes CI. Turning it on renders CI's `checks` job, which runs `just ci` after .github/actions/toolchain.
     Past explore, section 4 of the constitution asks for lint and tests, so the default is on.
   validator: >-
@@ -131,7 +129,7 @@ team_delivery:
   default: false
   help: >-
     Multi-developer team with AI agents (docs/ai-sdlc/practices.md in praxis-kit). Adds labels, the issue
-    forms, the PR template, CODEOWNERS, the main ruleset, the private-reference check, docs/raci.md and the board,
+    forms, the PR template, CODEOWNERS, the main ruleset, docs/raci.md and the board,
     review-and-merge, security-testing and hand-over runbooks. Requires ci_target github-actions.
   validator: >-
     {% if team_delivery and ci_target != 'github-actions' %}

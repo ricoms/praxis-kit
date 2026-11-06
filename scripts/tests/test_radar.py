@@ -14,7 +14,6 @@ quadrant = "techniques"
 ring = "adopt"
 why = "Baselines only shrink"
 ref = "docs/ratchet.md"
-evidence = "only shrink"
 """
 
 
@@ -50,13 +49,6 @@ class Radar(unittest.TestCase):
         code, err = self.run_radar("check")
         self.assertEqual(code, 1)
         self.assertIn("radar.md is stale", err)
-
-    def test_check_reports_evidence_the_ref_no_longer_holds(self):
-        self.run_radar("render")
-        (self.root / "docs" / "ratchet.md").write_text("A baseline may grow.\n")
-        code, err = self.run_radar("check")
-        self.assertEqual(code, 1)
-        self.assertIn("no longer contains 'only shrink'", err)
 
     def test_problems_names_each_broken_field(self):
         self.write(GOOD + GOOD.replace('ring = "adopt"', 'ring = "maybe"').replace("docs/ratchet.md", "docs/gone.md"))

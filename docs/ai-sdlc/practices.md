@@ -33,8 +33,8 @@ commit. Coordination state (roster, commercials, our read on the client) stays o
 repo cannot be avoided, it gets an end date and a migration checklist: ADRs, constitution, open issues, skills,
 and a grep for back-references.
 
-- Enforced: `template` `README.md`, `docs/runbooks/` · `check` `scripts/private-refs.sh` with `.github/private-refs.txt`
-  in CI fails on private repo names, internal links or other listed content
+- Enforced: `template` `README.md`; `docs/runbooks/hand-over.md` searches the repository and its history for the
+  team's private names before a hand-over · `prose`
 - Evidence: [repository](evidence.md#repository-and-checks) — ADRs moved by hand, dozens of back-references, about
   a third of the discovery issues stranded at archive, skills that never loaded.
 
