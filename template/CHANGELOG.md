@@ -7,6 +7,11 @@ checks that need no stack, so a fresh render passes CI on its first push. It def
 `release_workflow`, which requires it. `just ci` now follows the stage: `explore` runs `test` only.
 `README.md` § How CI grows describes the steps.
 
+The ADR lint is gone: `scripts/adr-lint.sh`, CI's `adr` job and its required status check. Every ADR still states its
+Status and Deciders, by agreement. The image and smoke scripts and `.github/smoke.txt` render only with
+`release_workflow`, which is the only thing that calls them. On a team, run `scripts/repo/apply-ruleset.sh` after the
+update so the ruleset stops requiring `adr`.
+
 A project rendered earlier in `build`, `run` or `sustain`, or with `release_workflow`, keeps its `checks` job on
 update. A project in `explore` without `release_workflow` whose slots are filled passes `--data stack_decided=true`
 on its next update. Without it, the update removes CI's `checks` job. With `team_delivery`, the ruleset still requires

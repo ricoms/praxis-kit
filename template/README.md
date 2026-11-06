@@ -44,12 +44,14 @@ rendered project owes no notice for them.
 - `.copier-answers.praxis-kit.yml`, the answers and template commit that `copier update` starts from.
 - `docs/agreements.md`, the ten decisions every team settles, with proposed defaults; `docs/slo.md`, `docs/adr/`,
   and the runbooks: CI/CD troubleshooting, the runbook index, incidents, `rotations.log`.
-- `.github/workflows/ci.yml`: the ADR lint and gitleaks always. With `stack_decided`, `checks` runs `just ci` after
+- `.github/workflows/ci.yml`: gitleaks always. With `stack_decided`, `checks` runs `just ci` after
   the toolchain action. With `release_workflow`, `image` builds with `scripts/build-image.sh` and smoke-checks the
   image.
-- `justfile` with the recipe contract (`ci`, `lint`, `test`, `audit`, `secrets`, `security-scan`, `smoke`), and a stack-free
+- `justfile` with the recipe contract (`ci`, `lint`, `test`, `audit`, `secrets`, `security-scan`, and `smoke` with
+  `release_workflow`), and a stack-free
   two-stage `.pre-commit-config.yaml` and `dependabot.yml`.
-- With `release_workflow`: `.github/workflows/release.yml` (build once, deploy to dev on a pre-release, promote the
+- With `release_workflow`: `scripts/build-image.sh`, `scripts/image-smoke.sh`, `scripts/smoke.sh` and
+  `.github/smoke.txt`, and `.github/workflows/release.yml` (build once, deploy to dev on a pre-release, promote the
   same digest to prod, roll back through the pipeline) and `docs/runbooks/rollback.md`.
 - With `team_delivery`: labels, the issue forms (bug, enhancement, question, client question, decision, risk and
   security test, each applying a kind label), board close-out and the daily digest,
@@ -61,7 +63,7 @@ rendered project owes no notice for them.
 CI asks only for what the project can already pass, so a fresh render is green on its first push. It grows in three
 steps, each triggered by a fact:
 
-1. **At render, any stage.** CI runs the checks that need no stack: gitleaks, the ADR lint and, with
+1. **At render, any stage.** CI runs the checks that need no stack: gitleaks and, with
    `team_delivery`, the private-reference check.
 2. **When the stack is decided.** That means its ADR is accepted, or an existing codebase already runs on it. Fill the
    toolchain, `lint`, `test` and `audit` slots, then pass `--data stack_decided=true` to the update. CI's `checks` job
@@ -82,7 +84,7 @@ flowchart TD
     situation -->|greenfield| named{Do the developers<br/>know the stack?}
     named -->|yes| adr[Stack ADR, accepted by the decider]
     named -->|they want help| propose[Agent proposes options from<br/>the radar and decision points] --> adr
-    named -->|not yet| undecided["Render with stack_decided=false<br/>CI: gitleaks, ADR lint, private-refs<br/>green on the first push"]
+    named -->|not yet| undecided["Render with stack_decided=false<br/>CI: gitleaks, private-refs<br/>green on the first push"]
     undecided -. later .-> adr
 
     situation -->|brownfield, stack fixed| evidence[Read the stack from the repo:<br/>lockfiles, CI, Dockerfile]

@@ -98,8 +98,7 @@ One matrix of decision types, one Accountable per row, roles not names. The role
 Each row's Accountable is the named decider the constitution's decision agreements refer to.
 
 - Enforced: `template` `.github/CODEOWNERS` requests the named decider on ADRs; acceptance is by agreement, not a
-  gate · `check` `scripts/adr-lint.sh` requires a Status and a named Deciders line on every ADR ·
-  `template` `docs/raci.md`
+  gate · `template` `docs/raci.md`
 - Evidence: [decisions](evidence.md#questions-and-decisions) — approvals moved faster once the team switched to
   decide-and-inform. [Ledger](evidence.md#engagement-ledger) — RACI existed only as defaults, not per decision type.
 

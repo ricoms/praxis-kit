@@ -34,7 +34,7 @@ VARIANTS: dict[str, dict[str, str]] = {
     },
 }
 PRACTICES_VARIANT = "team-release"
-STACK_FREE_JOBS = {"adr", "gitleaks", "private-refs"}
+STACK_FREE_JOBS = {"gitleaks", "private-refs"}
 CI_RECIPES = {"explore": "test"}
 CI_RECIPES_AFTER_EXPLORE = "lint test audit"
 CHECKED_TAGS = {"template", "check", "skill"}
@@ -453,29 +453,6 @@ def private_refs_behave(project: Path) -> list[str]:
     return errors
 
 
-ADR_CASES = [
-    ("no Deciders line", "# 0002 — X\n\n- Status: accepted\n- Date: 2026-01-01\n", 1),
-    ("placeholder decider", "# 0002 — X\n\n- Status: proposed\n- Date: 2026-01-01\n- Deciders: <the named decider>\n", 1),
-    ("superseded with decider", "# 0002 — X\n\n- Status: superseded by [0003](0003-y.md)\n- Date: 2026-01-01\n- Deciders: @a\n", 0),
-]
-
-
-def adr_lint_behaves(project: Path) -> list[str]:
-    script = project / "scripts" / "adr-lint.sh"
-    if not script.exists():
-        return ["scripts/adr-lint.sh was not rendered"]
-    if subprocess.run(["bash", str(script)], cwd=project, capture_output=True).returncode != 0:
-        return ["adr-lint.sh rejects the template's own 0001 ADR"]
-    errors = []
-    extra = project / "docs" / "adr" / "0002-x.md"
-    for name, text, expected in ADR_CASES:
-        extra.write_text(text)
-        if (code := subprocess.run(["bash", str(script)], cwd=project, capture_output=True).returncode) != expected:
-            errors.append(f"adr-lint: {name} exited {code}, expected {expected}")
-    extra.unlink()
-    return errors
-
-
 def dependabot_directories_exist(project: Path) -> list[str]:
     config = project / ".github" / "dependabot.yml"
     if not config.exists():
@@ -791,7 +768,7 @@ def run(root: Path) -> int:
             except subprocess.CalledProcessError as exc:
                 failures.append(f"[{name}] render failed:\n{exc.stderr}")
                 continue
-            errors = lint(project) + required_checks_match_ci(project) + env_files_source(project) + adr_lint_behaves(project)
+            errors = lint(project) + required_checks_match_ci(project) + env_files_source(project)
             errors += dependabot_directories_exist(project) + slots_fail_until_written(project)
             errors += doors_classify_behaves(project) + smoke_script_behaves(project) + deploy_rollback_behaves(project)
             answers = {**BASE, **data}

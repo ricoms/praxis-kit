@@ -13,7 +13,7 @@ default:
 install:
     pre-commit install --install-hooks
 
-{% if ci_target == 'github-actions' %}
+{% if release_workflow %}
 # Customer-facing smoke checks (.github/smoke.txt) against a deployed environment
 smoke url:
     scripts/smoke.sh {{ "{{" }} url {{ "}}" }}

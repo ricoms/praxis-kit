@@ -3,7 +3,7 @@
 `main` is protected by the ruleset in `.github/rulesets/main.json`:
 
 - Changes reach `main` only through a squash-merged PR; no force-push, no deletion, no bypass.
-- {% if stack_decided %}`checks` (the project's `just ci`), {% endif %}{% if release_workflow %}`image`, {% endif %}`private-refs`, `adr` and `gitleaks` must pass; the ruleset in
+- {% if stack_decided %}`checks` (the project's `just ci`), {% endif %}{% if release_workflow %}`image`, {% endif %}`private-refs` and `gitleaks` must pass; the ruleset in
   `.github/rulesets/main.json` is the list. Never merge on red, even when the failure looks unrelated: fix it or park the PR.
 - Reviews are not required, for anyone: the author merges. Code owners in `.github/CODEOWNERS` are requested as
   reviewers automatically, which is how a one-way change gets its review requested.

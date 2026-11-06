@@ -12,12 +12,13 @@ _envops:
 _exclude:
   - ".git"
   - "{% if ci_target != 'github-actions' %}.github{% endif %}"
-  - "{% if ci_target != 'github-actions' %}scripts/smoke.sh{% endif %}"
-  - "{% if ci_target != 'github-actions' %}scripts/image-smoke.sh{% endif %}"
-  - "{% if ci_target != 'github-actions' %}scripts/build-image.sh{% endif %}"
   - "{% if not release_workflow %}.github/workflows/release.yml{% endif %}"
   - "{% if not release_workflow %}.github/actions/target-setup{% endif %}"
   - "{% if not release_workflow %}scripts/deploy.sh{% endif %}"
+  - "{% if not release_workflow %}scripts/smoke.sh{% endif %}"
+  - "{% if not release_workflow %}scripts/image-smoke.sh{% endif %}"
+  - "{% if not release_workflow %}scripts/build-image.sh{% endif %}"
+  - "{% if not release_workflow %}.github/smoke.txt{% endif %}"
   - "{% if not release_workflow %}scripts/image-digest.sh{% endif %}"
   - "{% if not release_workflow %}docs/runbooks/rollback.md{% endif %}"
   - "{% if not team_delivery %}.github/ISSUE_TEMPLATE{% endif %}"
@@ -124,7 +125,7 @@ stack_decided:
   default: "{{ release_workflow or stage != 'explore' }}"
   help: >-
     The stack is decided: its ADR is accepted, or an existing codebase already runs on it. Until then CI runs only the
-    checks that need no stack (the secrets scan, the ADR lint and, on a team, the private-reference check), so a fresh
+    checks that need no stack (the secrets scan and, on a team, the private-reference check), so a fresh
     render passes CI. Turning it on renders CI's `checks` job, which runs `just ci` after .github/actions/toolchain.
     Past explore, section 4 of the constitution asks for lint and tests, so the default is on.
   validator: >-
