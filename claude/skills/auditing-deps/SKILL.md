@@ -4,9 +4,9 @@ description: >-
   Audit deps for CVEs, supply-chain risk, stale maintenance. uv / pnpm /
   cargo runbooks + triage rubric + CVE response. Use after dep changes,
   weekly, or when a CVE drops.
-allowed-tools: Bash(uv run pip-audit *) Bash(uv tree *) Bash(pip-audit *) Bash(pnpm audit *) Bash(pnpm why *) Bash(cargo audit *) Bash(cargo deny check *) Bash(cargo tree *) Bash(trivy image *) Bash(git diff *) Bash(git log *) Read Grep Glob
+allowed-tools: Bash(pnpm audit --prod --audit-level=high) Bash(cargo audit --deny warnings) Bash(cargo deny check advisories sources licenses bans) Bash(git diff main -- pnpm-lock.yaml uv.lock Cargo.lock) Bash(uv tree --frozen) Bash(cargo tree) Read Grep Glob
 metadata:
-  requires-tools: Bash
+  requires-tools: Bash Write Edit
   tags:
     - security
     - supply-chain
@@ -18,8 +18,9 @@ metadata:
 
 Supply-chain attacks now outnumber traditional code vulns. Dep audits are not optional.
 
-Only the audits and the dependency trees run without asking. An upgrade (`uv lock --upgrade-package`, `pnpm update`,
-`cargo update`) changes the lockfile and can run install scripts, so it prompts.
+Only the exact audit, diff and tree commands written below run without asking. Anything else prompts: `uv run`,
+which locks and installs before `pip-audit` runs; a fix mode such as `pnpm audit --fix`; an upgrade that changes the
+lockfile; and any flag that writes a file.
 
 ## Audit checklist
 
@@ -184,7 +185,7 @@ For every upgrade, whatever its class:
 ### Python (uv)
 
 - `uv lock --upgrade-package <name>` — single-package upgrade
-- `uv tree` — see the dep tree, find why a transitive is included
+- `uv tree --frozen` — see the dep tree, find why a transitive is included, without rewriting `uv.lock`
 - Set `tool.uv.dev-dependencies` for dev-only — they don't ship to prod, audit lighter
 
 ### Node (pnpm)

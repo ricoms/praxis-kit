@@ -4,9 +4,9 @@ description: >-
   Run structured security scan gate. Use when the user says "security scan",
   after major implementation phases, before merging feature branches, or when
   auditing a project's security posture.
-allowed-tools: Bash(just security-scan) Bash(just secrets) Bash(just audit) Bash(gitleaks detect *) Bash(git log *) Bash(git diff *) Bash(git show *) Bash(grep *) Read Grep Glob
+allowed-tools: Bash(gitleaks detect --source . --no-banner -v) Read Grep Glob
 metadata:
-  requires-tools: Bash Agent
+  requires-tools: Bash Agent Write
 ---
 
 # Security scan gate
@@ -15,8 +15,9 @@ This skill is the scan that the stage table in `CONSTITUTION.md` §4 asks for: "
 infrastructure", per phase in `build` and weekly from `run`. It works for any stack. The project's tools run through its own
 `just security-scan` recipe; this skill decides what counts as a finding and how sure we are of it.
 
-The scan recipes, gitleaks and reading git history run without asking: they read and report. Anything else, such as
-another recipe, a fix or a push, prompts. So does starting a subagent.
+Only reading and the exact gitleaks command below run without asking. `just security-scan` prompts, because the
+branch under review defines what that recipe runs. Writing the report, starting a subagent and any other command
+prompt too.
 
 Two modes:
 
