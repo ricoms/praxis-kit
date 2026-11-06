@@ -60,6 +60,11 @@ Feature: Checkout
 - Run a new scenario before implementing it, and watch it fail for the right reason: the behaviour is missing, not a
   step is undefined.
 
+When a spec drives the feature, its acceptance scenarios are these scenarios. Draft each one in the spec as a
+fenced `gherkin` block. When the spec is approved, the person approving it saves the blocks as feature files under
+`tests/foundational/` and writes or approves their `Then` steps. An agent drafts but never saves them there: that
+approval is what freezes them. The spec then links to the files instead of restating them.
+
 ## Component tests, test-first
 
 Work in vertical slices: one test, then the code that makes it pass, then the next test. Writing every test first

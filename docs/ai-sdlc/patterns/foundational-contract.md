@@ -15,7 +15,8 @@ A **foundational scenario** is behaviour whose failure means the delivery failed
 tuned against:
 
 - a rebuild or migration: behaviour observed on the old system (a harness run, recorded traffic, a demo);
-- greenfield: acceptance criteria agreed with the client in the spec.
+- greenfield: acceptance criteria agreed with the client in the spec. The spec drafts them as Gherkin, and the person
+  approving it saves them as feature files in the frozen folder, with their `Then` steps.
 
 Before writing any, mark each candidate *preserve* or *do-not-preserve*. A contract drawn from everything the old
 system does will guard behaviour the new spec removes on purpose.
@@ -29,7 +30,9 @@ lives there: Gherkin feature files with their `Then` step definitions, and the m
 pytest-bdd's `scenarios(...)`; or plain test files whose assertions are the contract. `Given` and `When` step
 definitions and fixtures drive the system without judging it, so they live outside and change freely. Each runner's
 configuration names the folder, for example Cucumber's `paths` and `import`, playwright-bdd's `features` and `steps`,
-or Cucumber-JVM's `cucumber.features`. Two controls guard the folder, and neither is a CI check:
+or Cucumber-JVM's `cucumber.features`. behave loads one `steps/` folder, found by searching upward from the
+features: keep it outside, in `tests/steps/`, and load the frozen `Then` steps from one of its files with
+`runpy.run_path("tests/foundational/then_steps.py")`. Two controls guard the folder, and neither is a CI check:
 
 - **Agents cannot change it.** The project's `.claude/settings.json`, which the template renders, holds the deny rule
   `Edit(./tests/foundational/**)`. It covers Claude Code's edit, write and notebook tools, and the shell commands it
