@@ -156,12 +156,13 @@ to 0, records Actual, and records Waiting separately as decision latency. Estima
 
 ### IX. Story flow
 
-Spec per story. A story branch with one PR per spec phase; main stays releasable. Foundational scenarios are written
-by someone other than the implementer, and removing one requires a manifest change in the same diff. Freeze docs
-and issues before a readout or delivery.
+Spec per story. A story branch with one PR per spec phase; main stays releasable. Foundational tests are written by
+someone other than the implementer and live in a frozen folder: agents cannot edit it, and CODEOWNERS requests the
+scenario owners' review when a person does. Freeze docs and issues before a readout or delivery.
 
-- Enforced: `prose` [foundational contract](patterns/foundational-contract.md): authorship rule, manifest and pending
-  recipes per stack · `skill` `bootstrapping-with-spec-kit`
+- Enforced: `template` `.github/CODEOWNERS`, `.claude/settings.json` · `prose`
+  [foundational contract](patterns/foundational-contract.md): authorship rule and pending recipes per stack · `skill`
+  `writing-tests`, `bootstrapping-with-spec-kit`
 - Evidence: [repository](evidence.md#repository-and-checks) — AI-generated PRs reviewable in one sitting;
   [communication](evidence.md#communication-and-signals) — delivery day collided with new issues.
 

@@ -3,7 +3,7 @@ name: sequencing-next-actions
 description: >-
   A sequenced action table from the live board and repo, not memory,
   separating waits on people and stating the ordering claim. Use on "what
-  next", "what should I work on", "plan this", "prioritise the backlog".
+  next", "what should I work on", "plan this".
 metadata:
   tags:
     - planning

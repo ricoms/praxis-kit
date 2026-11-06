@@ -41,6 +41,7 @@ The files this template renders into a project are licensed [MIT-0](LICENSE-MIT-
 rendered project owes no notice for them.
 
 - `.claude/CLAUDE.md` with the declared tenancy mode and stage, and sections for the stack, modules and flows.
+- `.claude/settings.json`, which stops agents editing the frozen foundational tests in `tests/foundational/`.
 - `.copier-answers.praxis-kit.yml`, the answers and template commit that `copier update` starts from.
 - `docs/agreements.md`, the ten decisions every team settles, with proposed defaults; `docs/slo.md`, `docs/adr/`,
   and the runbooks: CI/CD troubleshooting, the runbook index, incidents, `rotations.log`.

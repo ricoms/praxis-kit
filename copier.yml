@@ -176,7 +176,7 @@ decision_owners:
   type: str
   when: "{{ team_delivery }}"
   default: "{{ code_owners }}"
-  help: Who is requested to review ADRs under docs/adr/ (the named architecture decider); acceptance is by agreement
+  help: Who is requested to review ADRs under docs/adr/ and frozen tests under tests/foundational/ (the named architecture decider); acceptance is by agreement
   validator: >-
     {% if not (decision_owners | regex_search('^@[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)?( @[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)?)*$')) %}
     space-separated @user or @org/team entries

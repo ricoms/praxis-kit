@@ -3,7 +3,7 @@ name: managing-github-issues
 description: >-
   Finishable GitHub issues, epics, and boards: track-by-state (never markdown
   checklists), native sub-issues, close on real completion. Use when
-  creating/updating any issue, epic, or board, or splitting work.
+  creating or updating an issue, epic or board.
 metadata:
   tags:
     - github
