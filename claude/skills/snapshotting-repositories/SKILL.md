@@ -3,8 +3,9 @@ name: snapshotting-repositories
 description: >-
   Dated repo snapshot: PR flow, review, CI, DORA estimates, hygiene. Use to
   measure a repo over a window or compare snapshots.
-allowed-tools: Bash, Read, Write
+allowed-tools: Bash(gh auth status) Read
 metadata:
+  requires-tools: Bash Write
   tags:
     - delivery
     - research
@@ -45,6 +46,9 @@ messages come only from deployment compares.
 `collect` writes `window.json`, `nodes.jsonl`, `edges.jsonl` and `metrics.json`, and prints a Markdown reading. Raw
 API responses hold logins and titles, so they go to `--raw` (default `~/.cache/repo-snapshots/`) and stay local.
 `--reuse-raw` rebuilds from them without fetching. A large repo takes minutes: CI runs are fetched one day at a time.
+
+`hugin snapshot` prompts, because its project, output and cache paths vary and `--out` could point inside a public
+repository. Writing the write-up prompts too.
 
 If stderr lists unmapped logins, add them to the roles file and run again with `--reuse-raw`. Bots are detected by
 GitHub's actor type and need no entry.
