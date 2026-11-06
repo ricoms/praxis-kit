@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from hugin import cli, profiles
 
@@ -118,6 +119,8 @@ class InstallTests(unittest.TestCase):
         self.base = Path(tmp.name)
         self.kit = self._make_kit("kit")
         self.overlay = self._make_overlay("overlay")
+        self.target = self.base / "home"
+        self.claude = self.target / ".claude"
 
     def _make_kit(self, name: str) -> Path:
         kit = self.base / name
@@ -125,89 +128,211 @@ class InstallTests(unittest.TestCase):
         _write(kit / "CONSTITUTION.md", "CONSTITUTION.\n")
         _write(kit / "claude" / "CLAUDE.md", "KERNEL.\n")
         _write(kit / "claude" / "rules" / "rule1.md", "Rule one.\n")
+        _write(kit / "claude" / "rules" / "rule2.md", "Rule two.\n")
         _skill(kit, "skillA", "Use when doing A.")
-        _profile(kit, "base", {"description": "base", "rules": ["rule1.md"], "skills": ["skillA"]})
+        _profile(kit, "base", {"description": "base", "rules": ["rule1.md", "rule2.md"], "skills": ["skillA"]})
         return kit
 
     def _make_overlay(self, name: str) -> Path:
         overlay = self.base / name
         _write(overlay / "claude" / "rules" / "rule1.md", "Overlay rule one.\n")
-        _profile(overlay, "overlay", {"description": "overlay", "rules": ["rule1.md"]})
+        _write(overlay / "claude" / "rules" / "mine.md", "Mine.\n")
+        _profile(overlay, "overlay", {"description": "overlay", "rules": ["rule1.md", "mine.md"]})
         return overlay
 
-    def target(self, name: str) -> Path:
-        return self.base / name
-
-    def install(self, profile_names, target, kit=None, overlay=None):
-        profiles.configure(kit or self.kit, overlay)
+    def run_install(self, profile_names=("base",), overlay=None, dry_run=False):
+        profiles.configure(self.kit, overlay)
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            profiles.install(profile_names, target)
-        return out.getvalue()
+            code = profiles.install(list(profile_names), self.target, dry_run)
+        return code, out.getvalue()
 
-    def test_fresh_install_links_items_into_the_kit(self):
-        target = self.target("home1")
-        out = self.install(["base"], target)
-        self.assertIn("LINK", out)
-        rule_link = target / ".claude" / "rules" / "rule1.md"
-        skill_link = target / ".claude" / "skills" / "skillA"
-        self.assertTrue(rule_link.is_symlink())
-        self.assertEqual(rule_link.resolve(), (self.kit / "claude" / "rules" / "rule1.md").resolve())
-        self.assertTrue(skill_link.is_symlink())
-        self.assertTrue((target / ".claude" / "CLAUDE.md").is_symlink())
-        self.assertTrue((target / ".claude" / "CONSTITUTION.md").is_symlink())
+    def manifest(self, name="praxis-kit"):
+        return json.loads((self.claude / ".kit-manifests" / f"{name}.json").read_text())
 
-    def test_second_install_is_idempotent(self):
-        target = self.target("home2")
-        self.install(["base"], target)
-        out2 = self.install(["base"], target)
-        self.assertNotIn("LINK", out2)
-        self.assertIn("OK", out2)
+    def test_fresh_install_copies_files_and_records_the_manifest(self):
+        code, out = self.run_install()
+        self.assertEqual(code, 0)
+        rule = self.claude / "rules" / "rule1.md"
+        self.assertFalse(rule.is_symlink())
+        self.assertEqual(rule.read_text(), "Rule one.\n")
+        self.assertEqual((self.claude / "rules" / "praxis-kit.md").read_text(), "KERNEL.\n")
+        self.assertEqual((self.claude / "CONSTITUTION.md").read_text(), "CONSTITUTION.\n")
+        self.assertFalse((self.claude / "CLAUDE.md").exists())
+        manifest = self.manifest()
+        self.assertNotIn("kit", manifest)
+        self.assertEqual(manifest["files"]["skills/skillA/SKILL.md"]["source"], "claude/skills/skillA/SKILL.md")
+        self.assertEqual(manifest["files"]["CONSTITUTION.md"]["source"], "CONSTITUTION.md")
 
-    def test_an_existing_real_file_is_skipped_and_left_untouched(self):
-        target = self.target("home3")
-        rule_path = target / ".claude" / "rules" / "rule1.md"
-        _write(rule_path, "local content\n")
-        out = self.install(["base"], target)
-        self.assertIn("SKIP", out)
-        self.assertFalse(rule_path.is_symlink())
-        self.assertEqual(rule_path.read_text(), "local content\n")
+    def test_a_kit_under_home_is_recorded_with_a_tilde(self):
+        self.assertEqual(profiles._home_relative(Path.home() / "kits" / "praxis-kit"), "~/kits/praxis-kit")
+        self.assertEqual(profiles._home_relative(Path("/opt/praxis-kit")), "/opt/praxis-kit")
 
-    def test_a_dangling_wrong_symlink_is_replaced(self):
-        target = self.target("home4")
-        rule_path = target / ".claude" / "rules" / "rule1.md"
-        rule_path.parent.mkdir(parents=True)
-        rule_path.symlink_to(target / "nowhere.md")
-        out = self.install(["base"], target)
-        self.assertIn("LINK", out)
-        self.assertTrue(rule_path.is_symlink())
-        self.assertEqual(rule_path.resolve(), (self.kit / "claude" / "rules" / "rule1.md").resolve())
+    def test_an_install_into_home_records_the_kit_path(self):
+        with mock.patch.object(Path, "home", return_value=self.target):
+            self.run_install()
+        self.assertEqual(Path(self.manifest()["kit"]), self.kit)
 
-    def test_a_symlink_to_a_different_existing_target_is_taken_and_left_alone(self):
-        target = self.target("home5")
+    def test_an_overlay_named_like_the_shared_kit_is_refused(self):
+        self.run_install()
+        twin = self._make_overlay("forks/praxis-kit")
+        with self.assertRaises(ValueError):
+            self.run_install(["overlay"], overlay=twin)
+        self.assertEqual((self.claude / "rules" / "praxis-kit.md").read_text(), "KERNEL.\n")
+
+    def test_a_manifest_path_outside_claude_is_rejected_and_nothing_is_deleted(self):
+        victim = self.target / "victim.txt"
+        _write(victim, "keep me\n")
+        digest = profiles._sha256(victim)
+        _write(self.claude / ".kit-manifests" / "praxis-kit.json",
+               json.dumps({"files": {"../victim.txt": {"source": "x", "sha256": digest}}}))
+        with self.assertRaises(ValueError):
+            self.run_install()
+        self.assertTrue(victim.exists())
+
+    def test_a_manifest_entry_without_a_hash_is_rejected(self):
+        _write(self.claude / ".kit-manifests" / "praxis-kit.json", json.dumps({"files": {"rules/rule1.md": {"source": "x"}}}))
+        with self.assertRaises(ValueError):
+            self.run_install()
+
+    def test_a_file_where_a_directory_belongs_stops_the_install_before_any_change(self):
+        self.claude.mkdir(parents=True)
+        (self.claude / "CLAUDE.md").symlink_to(self.kit / "claude" / "CLAUDE.md")
+        _write(self.claude / "skills", "not a directory\n")
+        code, out = self.run_install()
+        self.assertEqual(code, 1)
+        self.assertIn("REFUSE  skills is in the way", out)
+        self.assertTrue((self.claude / "CLAUDE.md").is_symlink())
+
+    def test_a_local_edit_alone_is_kept_without_claiming_the_kit_changed(self):
+        self.run_install()
+        _write(self.claude / "rules" / "rule1.md", "local edit\n")
+        _, out = self.run_install()
+        self.assertIn("KEEP    rules/rule1.md (edited here)", out)
+
+    def test_hidden_files_and_caches_in_a_skill_are_not_copied(self):
+        _write(self.kit / "claude" / "skills" / "skillA" / ".DS_Store", "x")
+        _write(self.kit / "claude" / "skills" / "skillA" / "__pycache__" / "a.pyc", "x")
+        self.run_install()
+        self.assertFalse((self.claude / "skills" / "skillA" / ".DS_Store").exists())
+        self.assertFalse((self.claude / "skills" / "skillA" / "__pycache__").exists())
+
+    def test_dry_run_lists_old_symlinks_and_keeps_them(self):
+        self.claude.mkdir(parents=True)
+        (self.claude / "CLAUDE.md").symlink_to(self.kit / "claude" / "CLAUDE.md")
+        _, out = self.run_install(dry_run=True)
+        self.assertIn("UNLINK  CLAUDE.md", out)
+        self.assertTrue((self.claude / "CLAUDE.md").is_symlink())
+
+    def test_second_install_changes_nothing(self):
+        self.run_install()
+        _, out = self.run_install()
+        self.assertNotIn("ADD", out)
+        self.assertNotIn("UPDATE", out)
+        self.assertIn("OK", out)
+
+    def test_an_unedited_file_is_updated_when_the_kit_changes(self):
+        self.run_install()
+        _write(self.kit / "claude" / "rules" / "rule1.md", "Rule one, revised.\n")
+        _, out = self.run_install()
+        self.assertIn("UPDATE  rules/rule1.md", out)
+        self.assertEqual((self.claude / "rules" / "rule1.md").read_text(), "Rule one, revised.\n")
+
+    def test_a_local_edit_is_kept_when_the_kit_changes(self):
+        self.run_install()
+        _write(self.claude / "rules" / "rule1.md", "local edit\n")
+        _write(self.kit / "claude" / "rules" / "rule1.md", "Rule one, revised.\n")
+        _, out = self.run_install()
+        self.assertIn("KEEP    rules/rule1.md", out)
+        self.assertEqual((self.claude / "rules" / "rule1.md").read_text(), "local edit\n")
+        _, out = self.run_install()
+        self.assertIn("KEEP    rules/rule1.md", out)
+
+    def test_a_file_the_kit_dropped_is_removed_if_unedited_and_kept_if_edited(self):
+        self.run_install()
+        _write(self.claude / "rules" / "rule2.md", "local edit\n")
+        _profile(self.kit, "base", {"description": "base", "rules": [], "skills": []})
+        _, out = self.run_install()
+        self.assertIn("REMOVE  rules/rule1.md", out)
+        self.assertFalse((self.claude / "rules" / "rule1.md").exists())
+        self.assertFalse((self.claude / "skills").exists())
+        self.assertIn("KEEP    rules/rule2.md", out)
+        self.assertTrue((self.claude / "rules" / "rule2.md").exists())
+        self.assertNotIn("rules/rule2.md", self.manifest()["files"])
+
+    def test_an_existing_file_the_kit_did_not_install_stops_the_install(self):
+        _write(self.claude / "rules" / "rule1.md", "local content\n")
+        code, out = self.run_install()
+        self.assertEqual(code, 1)
+        self.assertIn("REFUSE  rules/rule1.md", out)
+        self.assertFalse((self.claude / "rules" / "rule2.md").exists())
+        self.assertFalse((self.claude / ".kit-manifests").exists())
+        self.assertEqual((self.claude / "rules" / "rule1.md").read_text(), "local content\n")
+
+    def test_an_existing_identical_file_is_adopted(self):
+        _write(self.claude / "rules" / "rule1.md", "Rule one.\n")
+        code, _ = self.run_install()
+        self.assertEqual(code, 0)
+        self.assertIn("rules/rule1.md", self.manifest()["files"])
+
+    def test_a_users_own_claude_md_is_left_alone(self):
+        _write(self.claude / "CLAUDE.md", "my own instructions\n")
+        code, _ = self.run_install()
+        self.assertEqual(code, 0)
+        self.assertEqual((self.claude / "CLAUDE.md").read_text(), "my own instructions\n")
+
+    def test_symlinks_from_an_earlier_install_are_replaced_by_copies(self):
+        self.claude.mkdir(parents=True)
+        (self.claude / "CLAUDE.md").symlink_to(self.kit / "claude" / "CLAUDE.md")
+        (self.claude / "skills").mkdir()
+        (self.claude / "skills" / "skillA").symlink_to(self.kit / "claude" / "skills" / "skillA")
+        code, out = self.run_install()
+        self.assertEqual(code, 0)
+        self.assertIn("UNLINK  CLAUDE.md", out)
+        self.assertFalse((self.claude / "CLAUDE.md").exists())
+        self.assertFalse((self.claude / "skills" / "skillA").is_symlink())
+        self.assertTrue((self.claude / "skills" / "skillA" / "SKILL.md").is_file())
+        self.assertTrue((self.kit / "claude" / "skills" / "skillA" / "SKILL.md").is_file())
+
+    def test_a_symlink_into_another_tree_stops_the_install(self):
         other = self.base / "elsewhere.md"
         _write(other, "elsewhere\n")
-        rule_path = target / ".claude" / "rules" / "rule1.md"
-        rule_path.parent.mkdir(parents=True)
-        rule_path.symlink_to(other)
-        out = self.install(["base"], target)
-        self.assertIn("TAKEN", out)
-        self.assertEqual(rule_path.readlink(), other)
+        (self.claude / "rules").mkdir(parents=True)
+        (self.claude / "rules" / "rule1.md").symlink_to(other)
+        code, out = self.run_install()
+        self.assertEqual(code, 1)
+        self.assertIn("REFUSE  rules/rule1.md is a symlink", out)
+        self.assertEqual((self.claude / "rules" / "rule1.md").readlink(), other)
 
-    def test_an_overlay_kit_does_not_link_claude_md_or_constitution(self):
-        target = self.target("home6")
-        self.install(["overlay"], target, kit=self.kit, overlay=self.overlay)
-        self.assertFalse((target / ".claude" / "CLAUDE.md").exists())
-        self.assertFalse((target / ".claude" / "CONSTITUTION.md").exists())
+    def test_dry_run_changes_nothing(self):
+        code, out = self.run_install(dry_run=True)
+        self.assertEqual(code, 0)
+        self.assertIn("ADD     rules/rule1.md", out)
+        self.assertFalse(self.claude.exists() and any(self.claude.rglob("*")))
 
-    def test_an_overlay_item_already_owned_by_the_shared_kit_is_taken(self):
-        target = self.target("home7")
-        self.install(["base"], target, kit=self.kit)
-        shared_link = target / ".claude" / "rules" / "rule1.md"
-        original_target = shared_link.readlink()
-        out = self.install(["overlay"], target, kit=self.kit, overlay=self.overlay)
-        self.assertIn("TAKEN", out)
-        self.assertEqual(shared_link.readlink(), original_target)
+    def test_an_overlay_kit_has_its_own_manifest_and_leaves_the_shared_files(self):
+        self.run_install()
+        code, out = self.run_install(["overlay"], overlay=self.overlay)
+        self.assertEqual(code, 0)
+        self.assertIn("TAKEN   rules/rule1.md (installed by praxis-kit", out)
+        self.assertEqual((self.claude / "rules" / "rule1.md").read_text(), "Rule one.\n")
+        self.assertEqual((self.claude / "rules" / "mine.md").read_text(), "Mine.\n")
+        overlay = self.manifest("overlay")
+        self.assertEqual(set(overlay["files"]), {"rules/mine.md"})
+        self.assertNotIn("rules/praxis-kit.md", overlay["files"])
+
+    def test_uninstall_removes_unedited_files_and_keeps_edited_ones(self):
+        self.run_install()
+        _write(self.claude / "rules" / "rule2.md", "local edit\n")
+        profiles.configure(self.kit)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(profiles.uninstall(self.target), 0)
+        self.assertIn("KEEP    rules/rule2.md", out.getvalue())
+        self.assertFalse((self.claude / "rules" / "rule1.md").exists())
+        self.assertFalse((self.claude / "skills").exists())
+        self.assertFalse((self.claude / ".kit-manifests").exists())
+        self.assertEqual((self.claude / "rules" / "rule2.md").read_text(), "local edit\n")
 
 
 class BudgetTests(unittest.TestCase):
@@ -287,67 +412,55 @@ class DoctorTests(unittest.TestCase):
         _skill(self.kit, "skillA", "Use when doing A.")
         _profile(self.kit, "base", {"description": "base", "rules": ["rule1.md"], "skills": ["skillA"]})
         profiles.configure(self.kit)
-
-    def target(self, name: str) -> Path:
-        return self.base / name
-
-    def install(self, target):
+        self.target = self.base / "home"
         with contextlib.redirect_stdout(io.StringIO()):
-            profiles.install(["base"], target)
+            profiles.install(["base"], self.target)
 
-    def doctor(self, target):
+    def doctor(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            problems = profiles.cmd_doctor(target)
+            problems = profiles.cmd_doctor(self.target)
         return problems, out.getvalue()
 
     def test_a_clean_tree_has_zero_problems(self):
-        target = self.target("clean")
-        self.install(target)
-        problems, out = self.doctor(target)
-        self.assertEqual(problems, 0)
-        self.assertIn("OK", out)
+        self.assertEqual(self.doctor()[0], 0)
 
-    def test_dangling_when_the_repo_artifact_is_removed(self):
-        target = self.target("dangling")
-        self.install(target)
+    def test_a_missing_file_is_a_problem(self):
+        (self.target / ".claude" / "rules" / "rule1.md").unlink()
+        problems, out = self.doctor()
+        self.assertEqual(problems, 1)
+        self.assertIn("MISSING   rules/rule1.md", out)
+
+    def test_a_local_edit_is_reported(self):
+        _write(self.target / ".claude" / "rules" / "rule1.md", "edited\n")
+        problems, out = self.doctor()
+        self.assertEqual(problems, 1)
+        self.assertIn("EDITED    rules/rule1.md", out)
+
+    def test_a_kit_change_not_yet_installed_is_outdated(self):
+        _write(self.kit / "claude" / "rules" / "rule1.md", "Rule one, revised.\n")
+        problems, out = self.doctor()
+        self.assertEqual(problems, 1)
+        self.assertIn("OUTDATED  rules/rule1.md", out)
+
+    def test_a_file_the_kit_removed_is_dropped(self):
         (self.kit / "claude" / "rules" / "rule1.md").unlink()
-        problems, out = self.doctor(target)
+        problems, out = self.doctor()
         self.assertEqual(problems, 1)
-        self.assertIn("DANGLING", out)
-
-    def test_foreign_symlink_is_reported_but_not_counted_as_a_problem(self):
-        target = self.target("foreign")
-        self.install(target)
-        other = self.base / "elsewhere.md"
-        _write(other, "elsewhere\n")
-        (target / ".claude" / "rules" / "foreign.md").symlink_to(other)
-        problems, out = self.doctor(target)
-        self.assertEqual(problems, 0)
-        self.assertIn("FOREIGN", out)
-
-    def test_a_real_copy_of_a_repo_artifact_is_a_problem(self):
-        target = self.target("copy")
-        _write(target / ".claude" / "rules" / "rule1.md", "a real copy\n")
-        problems, out = self.doctor(target)
-        self.assertEqual(problems, 1)
-        self.assertIn("COPY", out)
+        self.assertIn("DROPPED   rules/rule1.md", out)
 
     def test_an_untracked_file_is_a_problem(self):
-        target = self.target("untracked")
-        _write(target / ".claude" / "rules" / "extra.md", "not in the repo\n")
-        problems, out = self.doctor(target)
+        _write(self.target / ".claude" / "rules" / "extra.md", "not from a kit\n")
+        problems, out = self.doctor()
         self.assertEqual(problems, 1)
-        self.assertIn("UNTRACKED", out)
+        self.assertIn("UNTRACKED rules/extra.md", out)
 
-    def test_missing_constitution_when_the_kernel_is_linked(self):
-        target = self.target("missing-constitution")
-        kernel = target / ".claude" / "CLAUDE.md"
-        kernel.parent.mkdir(parents=True)
-        kernel.symlink_to(self.kit / "claude" / "CLAUDE.md")
-        problems, out = self.doctor(target)
+    def test_no_manifest_is_a_problem(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            problems = profiles.cmd_doctor(self.base / "elsewhere")
         self.assertEqual(problems, 1)
-        self.assertIn("MISSING", out)
+        self.assertIn("NO MANIFEST", out.getvalue())
 
 
 class LintDescriptionsTests(unittest.TestCase):

@@ -72,7 +72,7 @@ docs-index:
     qmd update
     qmd embed || { echo "qmd embed failed: keyword search (qmd search) works, semantic search (qmd query) does not" >&2; exit 1; }
 
-# Two-way drift check: repo artifacts vs installed ~/.claude tree
+# Compare the installed ~/.claude tree with its manifest and with this checkout
 doctor:
     @{{profiles}} doctor
 
@@ -91,9 +91,13 @@ install-only *PROFILES:
 install-project DIR *PROFILES:
     @{{profiles}} install-project {{DIR}} {{PROFILES}}
 
-# Dry run: show what would be installed for a profile (no symlinks)
+# Show what installing a profile would change, and change nothing
 install-dry PROFILE:
-    @{{profiles}} resolve {{PROFILE}}
+    @{{profiles}} install --dry-run {{PROFILE}}
+
+# Remove this kit's unedited files from ~/.claude (or from DIR/.claude)
+uninstall DIR='':
+    @{{profiles}} uninstall {{DIR}}
 
 # ── Project registry ───────────────────────────────────────────
 
@@ -114,7 +118,7 @@ projects:
         print(f'  {p[\"path\"]}')
     "
 
-# Re-apply all registered projects (symlinks refresh from current repo state)
+# Re-apply all registered projects (copies refresh from current repo state)
 projects-sync-all:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -163,50 +167,3 @@ projects-remove NAME:
     json.dump(d, open('projects.json', 'w'), indent=2)
     "
     @echo "Removed {{NAME}} from projects.json"
-
-# ── Status / cleanup ───────────────────────────────────────────
-
-# Show what's currently symlinked in ~/.claude/
-status:
-    #!/usr/bin/env bash
-    CLAUDE="$HOME/.claude"
-    for kind in skills agents commands rules; do
-        echo "=== ~/.claude/$kind ==="
-        if [ -d "$CLAUDE/$kind" ]; then
-            for item in "$CLAUDE/$kind"/*; do
-                [ -e "$item" ] || continue
-                if [ -L "$item" ]; then
-                    target=$(readlink "$item")
-                    case "$target" in
-                        "{{repo_dir}}"/*) echo "  LINK $(basename "$item") → praxis-kit" ;;
-                        *) echo "  LINK $(basename "$item") → $target" ;;
-                    esac
-                else
-                    echo "  COPY $(basename "$item") (not a symlink)"
-                fi
-            done
-        fi
-    done
-
-# Remove stale symlinks pointing into this repo (or into ROOT, another kit) to non-existent items
-clean-stale ROOT=repo_dir:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    CLAUDE="$HOME/.claude"
-    REPO="$(cd "{{invocation_directory()}}" && cd "{{ROOT}}" && pwd -P)"
-    cleaned=0
-    for kind in skills agents commands rules; do
-        for item in "$CLAUDE/$kind"/*; do
-            [ -L "$item" ] || continue
-            target=$(readlink "$item")
-            case "$target" in
-                "$REPO"/*)
-                    if [ ! -e "$target" ]; then
-                        rm "$item"
-                        echo "  CLEAN $(basename "$item")"
-                        cleaned=$((cleaned + 1))
-                    fi ;;
-            esac
-        done
-    done
-    [ $cleaned -gt 0 ] && echo "Removed $cleaned stale symlinks." || echo "No stale symlinks."

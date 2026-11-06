@@ -1,6 +1,6 @@
 # Agent rules
 
-These rules load in every session, for every project. The root is `CONSTITUTION.md`, next to this file: values, safety floor, stages and agreements between people. It wins over this file. It is a symlink into the praxis-kit checkout; resolve its relative links from the symlink's target. A project's own `CLAUDE.md` declares its tenancy mode, stage and stack, and extends this file.
+These rules load in every session, for every project. The root is `CONSTITUTION.md` in the same `.claude` directory: values, safety floor, stages and agreements between people. It wins over this file. Resolve its relative links from the checkout named by `kit` in `~/.claude/.kit-manifests/praxis-kit.json`. A project's own `CLAUDE.md` declares its tenancy mode, stage and stack, and extends this file.
 
 When two goals conflict, rank them: Security > Compliance > Testing > Usability > Performance > Simplicity.
 
