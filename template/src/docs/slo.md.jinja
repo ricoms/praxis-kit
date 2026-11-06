@@ -14,9 +14,18 @@ Fill in each section before the first production incident forces you to do it un
 **Objective + measurement window** — <!-- TODO -->
 - Target: `<TODO>%` of requests meet the SLI above, measured over a rolling `<TODO>`-day window
 
-**Error-budget policy** — <!-- TODO, a paragraph not a doc -->
-What happens when the budget is exhausted (freeze non-critical deploys? page someone? both?) —
-write the actual policy your team will follow, not a placeholder that sounds good.
+**Error-budget policy** — the default below is the Incident handling row in `docs/agreements.md`; change it there,
+then here. When the budget for the window is spent:
+
+- Non-critical deploys freeze. A fix for the breach, a security fix and a rollback still go out.
+- Reliability work goes first: the work that brings the service back within its objective takes the next slot,
+  ahead of planned work.{% if team_delivery %} Its issues carry the `unplanned` label as well as their kind, usually
+  `bug`, and each one links the postmortem or the breach that pulled it in.{% endif %}
+- {{ "The on-call role" if team_delivery else "The project owner" }} declares the freeze in the alarm channel, and
+  ends it the same way once the window's error rate is back under the objective.
+
+"Only an incident or a breach of the safety floor justifies an interruption" (`CONSTITUTION.md` §1). A spent error
+budget counts as the first, measured instead of declared.
 
 <!-- A user-facing frontend gets its own section: its SLIs differ in kind (Core Web Vitals, client-error rate). -->
 
