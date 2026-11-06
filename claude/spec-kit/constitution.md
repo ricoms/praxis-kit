@@ -52,7 +52,7 @@ check", "logs", "per phase", "new code", "beyond fixes"), its gate applies in th
 | Practice | Spec-kit gate |
 |---|---|
 | Upgrades classified by reversibility and trust, after a cooldown (section 2) | Plan names every new or upgraded dependency, including prompt, model and dataset versions, with its version bound and class. More than five new dependencies need a stated reason. Tasks include a dependency-review task |
-| Tests at the right tier: scenarios for cross-module flows, component tests for modules, structural checks | Plan lists the tests per tier. Tasks put test tasks before implementation tasks. Analyze rejects a plan missing an active tier |
+| Tests at the right tier: scenarios for cross-module flows, component tests for modules, structural checks | Specify writes each acceptance scenario as a fenced `gherkin` block. Before Plan, the person approving the spec saves the blocks as feature files under `tests/foundational/`, writes or approves their `Then` steps, and the spec links to the files. Plan's scenario tier is those files. Tasks put test tasks, including the `Given` and `When` steps, before implementation tasks. Analyze rejects a plan missing an active tier, or a spec whose acceptance scenarios have no feature file |
 | Strictest typing and lint the language offers, including the complexity limit | Implement passes the project's lint and type checks with no raised threshold and no new exemption |
 | Modules split by user-facing purpose, with flows between them kept explicit | Specify names the modules the feature touches. Plan declares any new public interface. Analyze runs the boundary check |
 | A specification before implementing a non-trivial feature | Specify produces the spec before plan starts |
