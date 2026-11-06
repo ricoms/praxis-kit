@@ -121,8 +121,7 @@ Client questions follow the constitution's one-question agreement, one issue eac
 `asked`. Internal check first, then send within N working days. Replies go on the issue. Keep the open asks per
 client contact few and visible: single questions are answered in a day, batches wait.
 
-- Enforced: `template` `.github/ISSUE_TEMPLATE/client-question.yml`, `.github/labels.tsv` · `check`
-  `.github/workflows/digest.yml`
+- Enforced: `template` `.github/ISSUE_TEMPLATE/client-question.yml`, `.github/labels.tsv` · `prose`
 - Evidence: [questions](evidence.md#questions-and-decisions) — client median answer about a day once asked;
   internal questions about five times as long; drafted questions unsent for weeks; single questions answered
   fastest, batches open longer, all on one client contact.
@@ -136,9 +135,10 @@ Two details of the one-way definition matter here. A same-repo frontend counts a
 deploy atomically with versioned assets. Governance files are one-way, so the rules cannot be loosened in the change
 they govern. Changes made outside a PR stay under Article X.
 
-- Enforced: `check` `.github/workflows/doors.yml` with `.github/doors.toml` labels every PR door:one-way or door:two-way
-  and, on one-way, recommends a review and states that the ADR is required, never blocking; no label means unclassified · `template` `.github/pull_request_template.md` asks for the ADR · `prose`. An
-  ADR-link gate was rejected: it would be satisfied by any link
+- Enforced: `template` `.github/pull_request_template.md` asks whether the change is one-way and for its ADR,
+  `.github/labels.tsv` has the door:one-way label the author applies · `prose`. An ADR-link gate was rejected: it
+  would be satisfied by any link. An automated door classifier was rejected too: it guessed from paths what the
+  author can judge
 - Evidence: [decisions](evidence.md#questions-and-decisions) — the test categories kept expensive decisions from
   passing as cheap; ADRs that followed failures. [Review](evidence.md#review-and-one-way-changes) — over every merged
   PR, about one in four one-way and about two in five of those reviewed; nearly every sampled unreviewed one-way PR
@@ -146,11 +146,11 @@ they govern. Changes made outside a PR stay under Article X.
 
 ### VIII. The board is the source
 
-One sprint system (milestones). Built-in project workflows keep Status. On close: Remaining Work 0, Actual asked,
-Waiting recorded separately as decision latency. Estimates are re-weighted per phase from the team's own ratios.
+One sprint system (milestones). Built-in project workflows keep Status. On close, the assignee sets Remaining Work
+to 0, records Actual, and records Waiting separately as decision latency. Estimates are re-weighted per phase from the team's own ratios.
 
-- Enforced: `template` `scripts/board/bootstrap-project.sh`, `docs/runbooks/board.md` · `check`
-  `.github/workflows/close-out.yml` · `skill` `reading-delivery-velocity`
+- Enforced: `template` `scripts/board/bootstrap-project.sh`, `docs/runbooks/board.md` · `skill`
+  `reading-delivery-velocity`
 - Evidence: [board](evidence.md#board-and-estimates) — built-in workflows zero drift; manual fields drifted until
   the agent rule; plan about 1.3×, verify about 0.7×; two sprint systems disagreed.
 
@@ -183,13 +183,12 @@ from new advisories and fix them the same day.
 ### XI. Review and merge
 
 Merging follows the safety floor and the constitution's shared-work agreements, as adjusted in the project's
-`docs/agreements.md`. Reviews are not required. CODEOWNERS requests the area's owners automatically; the door check
-(Article VII) recommends a review on one-way changes. Review requests go through GitHub, not chat. Name a second
+`docs/agreements.md`. Reviews are not required. CODEOWNERS requests the area's owners automatically; the author
+requests a review on a one-way change (Article VII). Review requests go through GitHub, not chat. Name a second
 reviewer per story, so review requests do not queue on one person.
 
 - Enforced: `template` `.github/rulesets/main.json` (required checks, squash only, no force-push, no bypass, no
-  required approvals), `.github/CODEOWNERS` (requests owners), `.github/pull_request_template.md` · `check`
-  `.github/workflows/doors.yml` and `.github/workflows/digest.yml` make one-way and waiting PRs visible
+  required approvals), `.github/CODEOWNERS` (requests owners), `.github/pull_request_template.md`
 - Evidence: [review](evidence.md#review-and-one-way-changes) — about two thirds of merged PRs, and about nine in
   ten in the discovery repo, without an outside reviewer, while one-way application changes were mostly reviewed;
   about two in five one-way changes reviewed; review the internal bottleneck, with requests going through chat and
@@ -201,14 +200,13 @@ The constitution's verify-the-path agreement applies. Deploy smoke tests exercis
 only the version endpoint. A check that fails fails the run and says so in team chat; a deployment recorded as a
 success over a failed check is a silent failure.
 
-Security testing is prepared before a vendor is booked: the in-scope list generated from the API contract and the
+Security testing is prepared before a vendor is booked: the in-scope list taken from the API contract and the
 deployed layout, the rules of engagement in an issue, tester onboarding and offboarding with a removal date, the
 alarms testers will trip routed to the team, and a release freeze agreed with the client.
 
 - Enforced: `template` `.github/smoke.txt` and `scripts/smoke.sh`, run by `.github/workflows/release.yml` after
   every deploy, rolling traffic back to the previous revision on failure · `skill` `verifying-the-path`
-  · `template` `.github/ISSUE_TEMPLATE/security-test.yml`, `scripts/security-scope.py`,
-  `docs/runbooks/security-testing.md`
+  · `template` `.github/ISSUE_TEMPLATE/security-test.yml`, `docs/runbooks/security-testing.md`
 - Evidence: [signals](evidence.md#communication-and-signals) — customer-facing requests failed while the version
   smoke passed; a coverage claim contradicted by a fresh report; a check failed, the deployment recorded success and
   nobody saw it; security testing on short notice, its scope spread over chat messages and its rules agreed in a
@@ -250,7 +248,7 @@ Meeting notes or transcripts are the record for absentees: one note-taker and on
 a meeting without notes is marked as such. Team chat may use the team's language; the repo and
 the shared channel use the client's. Shared artifacts must open for every recipient; export what must last.
 
-- Enforced: `check` `.github/workflows/digest.yml` · `prose`
+- Enforced: `prose`
 - Evidence: [communication](evidence.md#communication-and-signals) — client asked for status early; could not find
   the architecture doc; decks some could not open; decisions made async rather than in meetings; notes thinned
   toward the close; AI notes of the same meeting disagreeing on owners and dates; testing rules agreed only in a

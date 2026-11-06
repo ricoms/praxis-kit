@@ -13,19 +13,11 @@ needs the team's access, and the last one ends it. Keep the issue or PR that did
    holder in the hand-over issue rather than in that file. Verify: the hand-over issue names who holds the role now,
    or `docs/runbooks/rotations.log` has a dated entry for each secret rotated.
 3. Remove or repoint what points at the team's own systems.
-   - Board close-out and the daily digest: delete `.github/workflows/close-out.yml`, `.github/workflows/digest.yml`,
-     their scripts in `.github/scripts/`, `scripts/board/`, `docs/runbooks/board.md` and their rows in
-     `docs/runbooks/README.md`. Or keep them all and change them to the client's own project board and Slack
-     workspace.
-   - Variables and secrets: delete the `PROJECT_OWNER` and `PROJECT_NUMBER` repository variables and the
-     `PROJECT_TOKEN` and `SLACK_WEBHOOK_URL` repository secrets, or have the client set its own values. Deleting a
-     secret here does not disable it, so the team member who created the token revokes it in their GitHub
-     settings, and the team removes the webhook from its Slack app.
+   - The board: transfer the team's project board to the client, or have the client create its own with
+     `scripts/board/bootstrap-project.sh`.
    - Reviewers: replace the team's handles in `.github/CODEOWNERS` with the client's own reviewers.
 
-   Verify: `gh variable list` and `gh secret list` show neither name, or show an update date after the client set
-   its own value. The token and the webhook no longer appear in the team's GitHub and Slack settings, and
-   `.github/CODEOWNERS` names no team handle.
+   Verify: `.github/CODEOWNERS` names no team handle, and the client can open the board it will use.
 4. Write every private name the team used to `.git/info/private-refs`, one extended regex per line. Include other
    repositories, internal tools, Slack or email domains, and each team member's name and handle. That file is
    never committed, so the names do not reach the client. Run

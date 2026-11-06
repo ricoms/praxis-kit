@@ -16,7 +16,6 @@ alternatives are in [decision points](decision-points.md).
 | Ring | Entry | Why | Backed by |
 |---|---|---|---|
 | Adopt | Build once, promote the digest | Prod runs the image dev tested; promotion is gated on dev's deployment record | [`docs/ai-sdlc/patterns/release-promotion.md`](patterns/release-promotion.md) |
-| Adopt | Advisory one-way/two-way door check | Labels changes that revert + redeploy cannot undo and recommends a review; never blocks | [`template/src/.github/doors.toml`](../../template/src/.github/doors.toml) |
 | Adopt | 3-day dependency cooldown | Newest release at least 3 days old; an advisory fix goes in immediately | [`claude/skills/auditing-deps/SKILL.md`](../../claude/skills/auditing-deps/SKILL.md) |
 | Adopt | Smoke checks with rollback to the serving revision | Customer-path checks after traffic shifts; failure returns traffic to the revision that had it | [`template/src/.github/workflows/release.yml.jinja`](../../template/src/.github/workflows/release.yml.jinja) |
 | Adopt | One client question per issue | Each question has an owner, a recommendation and a default if the client stays silent | [`template/src/.github/ISSUE_TEMPLATE/client-question.yml.jinja`](../../template/src/.github/ISSUE_TEMPLATE/client-question.yml.jinja) |
@@ -29,6 +28,7 @@ alternatives are in [decision points](decision-points.md).
 | Assess | Effort cap on custom static-analysis rules | Two rounds of widening, then list the residual forms; rests on one engagement | [`docs/ai-sdlc/practices.md`](practices.md) |
 | Assess | Ledger fed from observed chat and GitHub events | Would replace manual writes to the engagement ledger; untried | [`docs/ai-sdlc/practices.md`](practices.md) |
 | Assess | Object-centric event log of the delivery lifecycle | Would measure change fail rate, rework and recovery time from issues, PRs, CI runs, releases and deployments; untried | [`docs/references/2508.00116-no-ai-without-pi.md`](../../docs/references/2508.00116-no-ai-without-pi.md) |
+| Hold | Automated one-way/two-way door classifier | It guessed from paths what the author can judge; the author labels one-way changes | [`docs/ai-sdlc/practices.md`](practices.md) |
 | Hold | Required approving reviews | Checks gate the merge and the author owns it; use only where regulation or a contract demands four-eyes | [`docs/ai-sdlc/practices.md`](practices.md) |
 | Hold | ADR-link gate | Any link satisfies it; a path is not a decision | [`docs/ai-sdlc/practices.md`](practices.md) |
 | Hold | Approval by frozen document package | The frozen copy went stale within hours and the approval tag was never used | [`docs/ai-sdlc/practices.md`](practices.md) |

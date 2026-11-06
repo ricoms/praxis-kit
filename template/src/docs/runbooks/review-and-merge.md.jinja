@@ -5,33 +5,21 @@
 - Changes reach `main` only through a squash-merged PR; no force-push, no deletion, no bypass.
 - {% if stack_decided %}`checks` (the project's `just ci`), {% endif %}{% if release_workflow %}`image`, {% endif %}`private-refs` and `gitleaks` must pass; the ruleset in
   `.github/rulesets/main.json` is the list. Never merge on red, even when the failure looks unrelated: fix it or park the PR.
-- Reviews are not required, for anyone: the author merges. Code owners in `.github/CODEOWNERS` are requested as
-  reviewers automatically, which is how a one-way change gets its review requested.
-- The `doors` check classifies every PR from `.github/doors.toml`. A **one-way door** (reverting it after release
-  may not restore an equivalent state: data reshaped or dropped, a contract others depend on, data that crossed a
-  trust or tenancy boundary, an effect that cannot be called back, or a governance file) gets the `door:one-way`
-  label and one comment saying why. The comment recommends a review and states that the ADR is required. Every other
-  PR gets `door:two-way`, and a PR with neither label was not classified. The check never blocks. Work on a one-way
-  change stops, and the PR does not merge, until its ADR is accepted by the named decider (`CONSTITUTION.md` §5).
+- Reviews are not required, for anyone: the author merges. CODEOWNERS also requests the owners of the paths it
+  covers as reviewers.
+- The author judges whether a PR is a **one-way door**: reverting it after release may not restore an equivalent
+  state, because data is reshaped or dropped, a contract others depend on changes, data crossed a trust or tenancy
+  boundary, an effect cannot be called back, or a governance file changes. The PR template asks, and the author
+  labels it `door:one-way` and requests a review. Work on a one-way change stops, and the PR does not merge, until
+  its ADR is accepted by the named decider (`CONSTITUTION.md` §5).
 
-Review requests go through GitHub (CODEOWNERS requests them automatically), not chat; the daily digest lists PRs
-still waiting after {{ review_wait_hours }} h.
+Review requests go through GitHub (CODEOWNERS requests them automatically), not chat. A PR still waiting for a
+review after {{ review_wait_hours }} h is followed up by its author.
 
 ## Apply or change the ruleset
 
 Edit `.github/rulesets/main.json`, merge it, then as a repo admin run `scripts/repo/apply-ruleset.sh`. The script
 updates the ruleset named `main` or creates it.
-
-## Tune the door check
-
-Edit `.github/doors.toml`: migration globs and destructive patterns, declared contract and effect paths, regexes for
-effectful calls (email, SMS, payment SDKs), and the OpenAPI spec. Set `external_consumers = false` and
-`atomic_frontend_deploy = true` only when the API's sole consumer is this repo's frontend and both deploy together
-with versioned assets; then breaking API changes count as two-way. Editing the file is itself one-way.
-
-The classifier, its runner script and its config are read from the base branch, so a PR cannot loosen them for
-itself; a PR that breaks the config fails the check. The workflow file runs from the PR, though: a PR that removes or
-empties `.github/workflows/doors.yml` is not classified at all.
 
 ## Symptoms
 
@@ -39,7 +27,4 @@ empties `.github/workflows/doors.yml` is not classified at all.
 |---|---|
 | No reviewer requested automatically | The owner in `CODEOWNERS` is not a user or team with write access; fix the entry |
 | Required check "Expected — waiting for status" never starts | A job in `ci.yml` was renamed; update `required_status_checks` and re-apply |
-| `doors` fails: "cannot read .github/doors.toml" | Fix the TOML syntax; the check only fails on its own config |
-| A PR has no door label | The `doors` run failed or could not write labels (fork PR); read its log |
-| A routine change is labelled one-way | Narrow the glob or pattern in `.github/doors.toml`; the label is advice, merge if you judge it two-way |
 | `apply-ruleset.sh` returns 403 | Run it as a repo admin. Private repos on GitHub Free do not support rulesets |

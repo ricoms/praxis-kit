@@ -40,7 +40,7 @@ snapshot.
 - **Actual ÷ estimate by phase** is what re-weights the next estimates (team practices Article VIII): multiply a new
   phase estimate by its ratio. Rows marked *small sample* (fewer than 5 pairs) are hints, not corrections.
 - **Coverage** below most of the done work means the ratios describe a subset; fix the board first
-  (`docs/runbooks/board.md`, the close-out Action).
+  (`docs/runbooks/board.md`): each closed issue needs its Actual.
 
 Actual is days of work and Waiting is days blocked; the script never adds them. Waiting is decision latency, read
 separately.

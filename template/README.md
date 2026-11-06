@@ -54,8 +54,7 @@ rendered project owes no notice for them.
   `.github/smoke.txt`, and `.github/workflows/release.yml` (build once, deploy to dev on a pre-release, promote the
   same digest to prod, roll back through the pipeline) and `docs/runbooks/rollback.md`.
 - With `team_delivery`: labels, the issue forms (bug, enhancement, question, client question, decision, risk and
-  security test, each applying a kind label), board close-out and the daily digest,
-  the door check, CODEOWNERS, the PR template, a `main` ruleset with its apply script, the private-reference check,
+  security test, each applying a kind label), CODEOWNERS, the PR template, a `main` ruleset with its apply script, the private-reference check,
   `docs/raci.md`, and the board, review-and-merge, security-testing and hand-over runbooks.
 
 ## How CI grows
@@ -113,6 +112,5 @@ flowchart TD
 | `.github/actions/target-setup` | `release.yml` | Logs in to the registry and the target, from repository variables |
 | `scripts/deploy.sh current\|release\|revert` | `release.yml` | Reports what serves an environment, deploys an image by digest, routes traffic back |
 | `scripts/migrate.sh ENV` (optional) | `release.yml` | Forward-only migration before a release, never on a rollback |
-| `openapi.json` (or `API_CONTRACT`) | `just security-scope` | The API contract a security test's scope is generated from |
 
 A stack that fills these slots can live in its own template and be applied after this one.

@@ -8,7 +8,7 @@ Closes #
 
 ## One-way decision?
 
-<!-- Would reverting this after release fail to restore an equivalent state (CONSTITUTION.md section 5)? Link the
-     accepted ADR. Otherwise delete this section. -->
+<!-- Would reverting this after release fail to restore an equivalent state (CONSTITUTION.md section 5)? Then label
+     the PR door:one-way, request a review, and link the accepted ADR. Otherwise delete this section. -->
 
 <!-- Open questions go on the linked issue, not here. -->

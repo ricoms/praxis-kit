@@ -22,21 +22,14 @@ _exclude:
   - "{% if not release_workflow %}scripts/image-digest.sh{% endif %}"
   - "{% if not release_workflow %}docs/runbooks/rollback.md{% endif %}"
   - "{% if not team_delivery %}.github/ISSUE_TEMPLATE{% endif %}"
-  - "{% if not team_delivery %}.github/scripts{% endif %}"
-  - "{% if not team_delivery %}.github/team-delivery.env{% endif %}"
   - "{% if not team_delivery %}.github/labels.tsv{% endif %}"
   - "{% if not team_delivery %}.github/workflows/labels.yml{% endif %}"
-  - "{% if not team_delivery %}.github/workflows/close-out.yml{% endif %}"
-  - "{% if not team_delivery %}.github/workflows/digest.yml{% endif %}"
   - "{% if not team_delivery %}scripts/board{% endif %}"
   - "{% if not team_delivery %}docs/runbooks/board.md{% endif %}"
   - "{% if not team_delivery %}docs/raci.md{% endif %}"
-  - "{% if not team_delivery %}scripts/security-scope.py{% endif %}"
   - "{% if not team_delivery %}docs/runbooks/security-testing.md{% endif %}"
   - "{% if not team_delivery %}.github/private-refs.txt{% endif %}"
   - "{% if not team_delivery %}scripts/private-refs.sh{% endif %}"
-  - "{% if not team_delivery %}.github/doors.toml{% endif %}"
-  - "{% if not team_delivery %}.github/workflows/doors.yml{% endif %}"
   - "{% if not team_delivery %}.github/CODEOWNERS{% endif %}"
   - "{% if not team_delivery %}.github/pull_request_template.md{% endif %}"
   - "{% if not team_delivery %}.github/rulesets{% endif %}"
@@ -137,8 +130,9 @@ team_delivery:
   type: bool
   default: false
   help: >-
-    Multi-developer team with AI agents (docs/ai-sdlc/practices.md in praxis-kit). Adds labels, the client
-    question form, board close-out, the daily waiting digest and the board runbook. Requires ci_target github-actions.
+    Multi-developer team with AI agents (docs/ai-sdlc/practices.md in praxis-kit). Adds labels, the issue
+    forms, the PR template, CODEOWNERS, the main ruleset, the private-reference check, docs/raci.md and the board,
+    review-and-merge, security-testing and hand-over runbooks. Requires ci_target github-actions.
   validator: >-
     {% if team_delivery and ci_target != 'github-actions' %}
     team_delivery requires ci_target 'github-actions'.
@@ -151,7 +145,7 @@ client_owner_label:
   help: Suffix of the owner label for items waiting on the client (owner:<this>)
   validator: >-
     {% if not (client_owner_label | regex_search('^[A-Za-z0-9][A-Za-z0-9 _.-]*$')) %}
-    letters, digits, spaces, '_', '.' or '-' (it is sourced by bash in .github/team-delivery.env)
+    letters, digits, spaces, '_', '.' or '-'
     {% endif %}
 
 team_owner_label:
@@ -161,14 +155,14 @@ team_owner_label:
   help: Suffix of the owner label for items waiting on us (owner:<this>)
   validator: >-
     {% if not (team_owner_label | regex_search('^[A-Za-z0-9][A-Za-z0-9 _.-]*$')) %}
-    letters, digits, spaces, '_', '.' or '-' (it is sourced by bash in .github/team-delivery.env)
+    letters, digits, spaces, '_', '.' or '-'
     {% endif %}
 
 ask_deadline_days:
   type: int
   when: "{{ team_delivery }}"
   default: 3
-  help: Days a client question may wait between filing and being sent before the digest flags it
+  help: Working days a client question may wait between filing and being sent
 
 code_owners:
   type: str
@@ -194,4 +188,4 @@ review_wait_hours:
   type: int
   when: "{{ team_delivery }}"
   default: 24
-  help: Hours a non-draft PR may wait without an outside review before the digest lists it
+  help: Hours a non-draft PR may wait for an outside review before its author follows up
