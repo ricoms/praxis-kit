@@ -148,6 +148,8 @@ Run it only if the developer agrees:
   stubs.
 - In both cases, run `just install-project` after the copy. The install writes the kit's rules under `.claude/rules/`
   and never touches the project's `.claude/CLAUDE.md`.
+- The template does not replace an existing `.claude/settings.json`. When the project has one, add the template's deny
+  rule `Edit(./tests/foundational/**)` to its `permissions.deny` list.
 
 **Write the agreements.** Fill `docs/agreements.md`, or create it with the template's structure when the developer
 declined the template:

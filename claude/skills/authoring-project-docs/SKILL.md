@@ -1,9 +1,9 @@
 ---
 name: authoring-project-docs
 description: >-
-  Route each fact to its one doc home (ADR, runbook, README, generated
-  CHANGELOG, OpenAPI), one Diátaxis mode per doc, stating the present. Use
-  when creating, moving, restructuring or reviewing any project doc.
+  Route each fact to its one doc home (ADR, runbook, README, CHANGELOG,
+  OpenAPI), one Diátaxis mode per doc, stating the present. Use when
+  creating, moving or reviewing a project doc.
 metadata:
   tags:
     - documentation

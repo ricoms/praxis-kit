@@ -22,34 +22,46 @@ system does will guard behaviour the new spec removes on purpose.
 
 This part is process. No check enforces it; the PR that adds a scenario should show it predates the implementation.
 
-## The backstop: the set cannot shrink quietly
+## The backstop: the folder is frozen
 
-Scenarios carry a `foundational` tag. A recipe writes the list of tagged scenarios to a committed manifest; CI
-regenerates it and fails on any difference, so removing, renaming or un-tagging one needs a manifest change in the
-same diff, where review sees it. A pending, skipped or todo scenario warns on a PR and fails on `main`.
+Foundational tests live in their own folder, `tests/foundational/`. Everything that states or checks an expected value
+lives there: Gherkin feature files with their `Then` step definitions, and the modules that load them, such as
+pytest-bdd's `scenarios(...)`; or plain test files whose assertions are the contract. `Given` and `When` step
+definitions and fixtures drive the system without judging it, so they live outside and change freely. Each runner's
+configuration names the folder, for example Cucumber's `paths` and `import`, playwright-bdd's `features` and `steps`,
+or Cucumber-JVM's `cucumber.features`. Two controls guard the folder, and neither is a CI check:
 
-| Stack | Manifest | Pending on `main` fails when |
-|---|---|---|
-| pytest | `pytest -m foundational --collect-only -q \| grep '::' \| sort` | `pytest -m foundational -q -rsx \| grep -E '^(SKIPPED\|XFAIL)'` finds a line |
-| RSpec | `rspec --tag foundational --dry-run --format json \| jq -r '.examples[] \| "\(.file_path) \(.full_description)"' \| sort` | `rspec --tag foundational --format json \| jq -e '.summary.pending_count == 0'` is false |
-| Vitest | name files `*.foundational.test.ts`; `vitest list .foundational.test. --json \| jq -r '.[] \| "\(.file) \(.name)"' \| sort` | `vitest run .foundational.test. --reporter=json --outputFile=f.json`, then any status other than `passed`/`failed` in `f.json` |
+- **Agents cannot change it.** The project's `.claude/settings.json`, which the template renders, holds the deny rule
+  `Edit(./tests/foundational/**)`. It covers Claude Code's edit, write and notebook tools, and the shell commands it
+  recognises, such as `sed`, `tee` and `>` redirection. It holds in every permission mode, and no allow rule can
+  override it. The project's `.claude/CLAUDE.md` also tells agents never to edit, move or delete a file there.
+- **People can, visibly.** On a team, `.github/CODEOWNERS` requests the decision owners' review on every PR that
+  touches the folder or `.claude/settings.json`. Removing or renaming a test, or changing an expected value, shows as
+  a change in that folder. The review is a request, as every review is by default; a team that wants it required
+  turns on `require_code_owner_review` in its ruleset.
 
-pytest needs the marker registered (`markers = ["foundational: …"]`) and `--strict-markers`, so a typo in the tag
-fails instead of silently selecting nothing. `vitest list` leaves out `.todo` tests; the pending check still catches
-them. RSpec descriptions, not positional ids, keep the manifest stable when examples are reordered.
+The freeze has edges, and review covers them rather than more checks:
 
-```just
-foundational-check:
-    <manifest command> > tests/foundational_manifest.txt
-    git diff --exit-code -- tests/foundational_manifest.txt
-```
+- The deny rule applies only to a session started at the repository root. A session started in a subfolder does not
+  load the root's `.claude/settings.json`, so the `CLAUDE.md` rule is all that holds there.
+- It does not stop a shell `rm` or `mv`, or a script that opens a file itself.
+- The runner configuration, and the `Given` and `When` steps and fixtures, sit outside the folder. Changing them can
+  skip a frozen test or fake the state a frozen `Then` reads, and each such change shows in the diff.
 
-Run the pending check with `continue-on-error: ${{ github.event_name == 'pull_request' }}` so it warns on PRs and
-fails on `main`.
+A pending, skipped or todo foundational test warns on a PR and fails on `main`:
+
+| Stack | Pending on `main` fails when |
+|---|---|
+| pytest | `pytest tests/foundational -q -rsx` exits 5 because it collected no test, or its output has a `SKIPPED` or `XFAIL` line |
+| RSpec | `rspec tests/foundational --format json \| jq -e '.summary.example_count > 0 and .summary.pending_count == 0'` is false |
+| Vitest | `vitest run tests/foundational --reporter=json --outputFile=f.json`, then any status other than `passed`/`failed` in `f.json` |
+
+Cucumber fails on pending or undefined steps when run with `--strict`. Run the check with
+`continue-on-error: ${{ github.event_name == 'pull_request' }}` so it warns on PRs and fails on `main`.
 
 ## Evidence
 
-One rebuild ([evidence](../evidence.md#repository-and-checks)): developers wrote and maintained the
-contract themselves; the tagged suite caught real regressions; the pending backstop
-was added after pending scenarios could reach `main`. No case was found of the manifest diff catching erosion — its
-value is that a removal cannot happen out of sight.
+One rebuild ([evidence](../evidence.md#repository-and-checks)): developers wrote and maintained the contract
+themselves; the tagged suite caught real regressions; the pending backstop was added after pending scenarios could
+reach `main`. The manifest of names it used then caught no erosion, and it could not see an edited expected value,
+which is why the folder is frozen instead.

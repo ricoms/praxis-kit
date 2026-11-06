@@ -1,11 +1,12 @@
 {
-  "description": "Always-on rules and the skills every team project uses: clarification, settling agreements, issues and boards, project docs, instruction files. Every other profile extends it.",
+  "description": "Always-on rules and the skills every team project uses: clarification, settling agreements, issues and boards, project docs, instruction files, tests. Every other profile extends it.",
   "skills": [
     "clarifying-with-user",
     "managing-github-issues",
     "authoring-project-docs",
     "authoring-instruction-files",
-    "settling-agreements"
+    "settling-agreements",
+    "writing-tests"
   ],
   "rules": [
     "glossary.md",
