@@ -31,6 +31,10 @@ ITEMS = {"items": [
     item(6, S3, "Todo", estimate=3),
     item(7, S3, "Todo", estimate=2, remaining=1),
     item(8, None, "Done", estimate=5, actual=5),
+    item(10, S2, "Done", actual=1.5, labels=["bug", "unplanned"]),
+    item(11, S2, "Done", estimate=2, labels=["unplanned"]),
+    item(13, S2, "Done", estimate=1, actual=4, phase="Plan", labels=["bug", "unplanned"]),
+    item(12, S2, "Done", labels=["unplanned"]),
     {"content": {"type": "PullRequest", "number": 9}, "status": "Done", "estimate": 9, "milestone": S1},
 ]}
 
@@ -56,9 +60,18 @@ class VelocityReading(unittest.TestCase):
 
     def test_sprint_rows_sum_estimates_and_skip_pull_requests(self):
         table = {r[0]: r[1:] for r in rows(self.out, "Sprint")[1:]}
-        self.assertEqual(table["Sprint 01"], ["2026-01-09", "7.0", "6.0", "120%", "1"])
-        self.assertEqual(table["Sprint 02"], ["2026-01-16", "3.0", "3.0", "60%", "0"])
-        self.assertEqual(table["Sprint 03 · V1"], ["2026-01-23", "5.0", "0.0", "0%", "2"])
+        self.assertEqual(table["Sprint 01"], ["2026-01-09", "7.0", "6.0", "120%", "0.0", "1"])
+        self.assertEqual(table["Sprint 02"], ["2026-01-16", "3.0", "3.0", "60%", "7.5", "0"])
+        self.assertEqual(table["Sprint 03 · V1"], ["2026-01-23", "5.0", "0.0", "0%", "0.0", "2"])
+
+    def test_unplanned_work_stays_out_of_the_estimate_ratios(self):
+        self.assertEqual(rows(self.out, "bug"), [])
+        plan = {r[0]: r[1:] for r in rows(self.out, "Plan")}
+        self.assertEqual(plan["Plan (small sample)"], ["2", "1.33", "1.25"])
+
+    def test_unplanned_work_is_reported_apart_from_planned_work(self):
+        header = rows(self.out, "Sprint")[0]
+        self.assertIn("Unplanned (d)", header)
 
     def test_margin_counts_sprints_ahead_and_remaining_work(self):
         line = next(line for line in self.out.splitlines() if line.startswith("Margin"))
@@ -75,7 +88,10 @@ class VelocityReading(unittest.TestCase):
         self.assertEqual(kinds["task (small sample)"], ["2", "0.83", "1.00"])
 
     def test_coverage_counts_done_estimated_issues(self):
-        self.assertIn("4 of 5 done estimated issues have an Actual; 1 missing.", self.out)
+        self.assertIn("5 of 7 done estimated issues have an Actual; 2 missing.", self.out)
+
+    def test_unplanned_work_without_effort_is_reported_not_counted_as_zero(self):
+        self.assertIn("1 done unplanned issues have neither Actual nor Estimate", self.out)
 
     def test_ambiguous_target_is_reported_not_guessed(self):
         self.assertIn("3 found", run("--target", "Sprint 0", "--today", "2026-01-12"))

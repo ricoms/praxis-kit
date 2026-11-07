@@ -4,7 +4,9 @@ Usage:
   hugin velocity --owner ORG --project N --capacity DAYS [--target MILESTONE] [--input items.json]
 
 Sprints are milestones. An item is done when its Status is Done. Numbers come from the
-Estimate, Actual and Remaining Work fields; Phase and `type:` labels group the ratios.
+Estimate, Actual and Remaining Work fields; Phase and `type:` labels group the ratios. An issue labelled
+`unplanned` (pulled in by an incident or a spent error budget) is left out of Planned and Done and reported in its own
+column, as days of work.
 """
 
 import argparse
@@ -31,6 +33,7 @@ class Item:
     remaining: float | None
     phase: str | None
     kind: str | None
+    unplanned: bool = False
 
 
 def field_key(name: str) -> str:
@@ -75,6 +78,7 @@ def parse(raw: list[dict[str, Any]], args: argparse.Namespace) -> list[Item]:
             remaining=number(r.get(field_key(args.remaining_field))),
             phase=r.get(field_key(args.phase_field)) or None,
             kind=kinds[0] if kinds else None,
+            unplanned="unplanned" in labels,
         ))
     return items
 
@@ -88,8 +92,10 @@ def sprints(items: list[Item]) -> list[dict[str, Any]]:
             dues[it.sprint] = it.due
     order = sorted(by_sprint, key=lambda s: (dues[s] or dt.date.max, s))
     return [{"sprint": s, "due": dues[s],
-             "planned": sum(it.estimate or 0 for it in by_sprint[s]),
-             "done": sum(it.estimate or 0 for it in by_sprint[s] if it.done),
+             "planned": sum(it.estimate or 0 for it in by_sprint[s] if not it.unplanned),
+             "done": sum(it.estimate or 0 for it in by_sprint[s] if it.done and not it.unplanned),
+             "unplanned": sum((it.actual if it.actual is not None else it.estimate) or 0
+                              for it in by_sprint[s] if it.done and it.unplanned),
              "open": sum(1 for it in by_sprint[s] if not it.done)} for s in order]
 
 
@@ -112,7 +118,7 @@ def ratios(items: list[Item], group: str) -> dict[str, dict[str, float]]:
     pairs: dict[str, list[tuple[float, float]]] = defaultdict(list)
     for it in items:
         key = it.phase if group == "phase" else it.kind
-        if it.done and key and it.estimate and it.actual is not None:
+        if it.done and key and it.estimate and it.actual is not None and not it.unplanned:
             pairs[key].append((it.estimate, it.actual))
     return {key: {"pairs": len(p), "ratio": sum(a for _, a in p) / sum(e for e, _ in p),
                   "median": statistics.median(a / e for e, a in p), "small_sample": len(p) < SMALL_SAMPLE}
@@ -122,14 +128,17 @@ def ratios(items: list[Item], group: str) -> dict[str, dict[str, float]]:
 def coverage(items: list[Item]) -> dict[str, int]:
     estimated = [it for it in items if it.done and it.estimate]
     missing = sum(1 for it in estimated if it.actual is None)
-    return {"estimated_done": len(estimated), "with_actual": len(estimated) - missing, "missing": missing}
+    unplanned_unmeasured = sum(1 for it in items if it.done and it.unplanned and it.actual is None and not it.estimate)
+    return {"estimated_done": len(estimated), "with_actual": len(estimated) - missing, "missing": missing,
+            "unplanned_unmeasured": unplanned_unmeasured}
 
 
 def sprint_table(items: list[Item], capacity: float) -> list[str]:
-    lines = ["| Sprint | Due | Planned (d) | Done (d) | Done ÷ capacity | Open items |", "|---|---|--:|--:|--:|--:|"]
+    lines = ["| Sprint | Due | Planned (d) | Done (d) | Done ÷ capacity | Unplanned (d) | Open items |",
+             "|---|---|--:|--:|--:|--:|--:|"]
     for r in sprints(items):
         lines.append(f"| {r['sprint']} | {r['due'] or '—'} | {r['planned']:.1f} | {r['done']:.1f} "
-                     f"| {r['done'] / capacity:.0%} | {r['open']} |")
+                     f"| {r['done'] / capacity:.0%} | {r['unplanned']:.1f} | {r['open']} |")
     return lines
 
 
@@ -152,8 +161,12 @@ def ratio_table(items: list[Item], group: str) -> list[str]:
 
 
 def coverage_line(c: dict[str, int], actual_field: str) -> str:
-    return (f"{c['with_actual']} of {c['estimated_done']} done estimated issues have an {actual_field}; "
+    line = (f"{c['with_actual']} of {c['estimated_done']} done estimated issues have an {actual_field}; "
             f"{c['missing']} missing.")
+    if c["unplanned_unmeasured"]:
+        line += (f" {c['unplanned_unmeasured']} done unplanned issues have neither {actual_field} nor "
+                 "Estimate, so Unplanned (d) leaves them out.")
+    return line
 
 
 def positive_days(value: str) -> float:

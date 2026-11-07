@@ -89,9 +89,9 @@ Sprints are milestones, as in `reading-delivery-velocity`; both call the same fu
 
 | Signal | Formula | Trap |
 | --- | --- | --- |
-| Planned and done per sprint | sum of Estimate per sprint, all and Done; done ÷ capacity | An item moved between sprints moves its credit, so read elapsed sprints together |
+| Planned and done per sprint | sum of Estimate per sprint, all and Done, without `unplanned` issues; done ÷ capacity; unplanned as the Actual (else Estimate) of done `unplanned` issues | An item moved between sprints moves its credit, so read elapsed sprints together |
 | Margin | capacity × sprints due on or after the board's `as_of` date, minus open work (Remaining Work, else Estimate) up to the target | Fields are as of collection; the board has no history, so a past margin cannot be replayed |
-| Actual ÷ estimate | by Phase and by `type:` label, Σ and median; under 5 pairs is a small sample | Low Actual coverage limits the ratio, not the burn |
+| Actual ÷ estimate | by Phase and by `type:` label, Σ and median, leaving out `unplanned` issues; under 5 pairs is a small sample | Low Actual coverage limits the ratio, not the burn |
 | Carry-over | per sprint, items ever in it, and items that left it while open for a later sprint after it began (a demilestone and a milestone within a minute); share over elapsed sprints. A sprint begins at the previous sprint's due date; the first begins at its due date minus the gap between the first two due dates, and with only one sprint carried-over and re-planned are `null` (unknown). Re-planned early and other departures are separate columns | Events record the milestone's title at the time. Renames are resolved when an issue's last event names the old title and it now sits in the new one; conflicting or missing evidence leaves the title unresolved |
 
 ## Lineage

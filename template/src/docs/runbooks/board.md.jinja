@@ -15,6 +15,10 @@ do not add an iteration field as well.
 When an issue closes, its assignee sets Remaining Work to 0, records Actual, and records Waiting separately as
 decision latency.
 
+Work that an incident or a spent error budget pulls into a sprint carries the `unplanned` label, as well as its kind.
+The velocity reading leaves it out of planned work and reports it in its own column, so a sprint it disrupted does
+not read as planned work that overran.
+
 ## What runs
 
 The `labels` workflow creates or updates the labels in `.github/labels.tsv` when that file changes on `main`, or when
