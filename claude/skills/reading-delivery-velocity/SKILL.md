@@ -36,7 +36,9 @@ snapshot.
 - **Done ÷ capacity per sprint** above 100% means the sprint closed more estimate than planned capacity; below it,
   carry-over, missing estimates or unplanned work. Check which before calling it a slip.
 - **Unplanned (d)** is the days of work done on issues labelled `unplanned`: work an incident or a spent error budget
-  pulled in. It is left out of Planned and Done, so a disrupted sprint reads as disrupted, not as a slip.
+  pulled in. It is left out of Planned and Done, so a disrupted sprint reads as disrupted, not as a slip. It counts
+  Actual, or Estimate when Actual is missing, because incident work rarely has an estimate. Unplanned issues are also
+  left out of the Actual ÷ estimate ratios, so a rushed incident estimate does not re-weight planned work.
 - **Margin** is capacity left to the target milestone minus open work (Remaining Work, else Estimate). Negative means
   re-plan or re-scope now, not at the milestone.
 - **Actual ÷ estimate by phase** is what re-weights the next estimates (team practices Article VIII): multiply a new

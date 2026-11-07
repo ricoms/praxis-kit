@@ -192,7 +192,8 @@ class SnapshotMetrics(unittest.TestCase):
         self.assertEqual(sprints, {"Sprint 1": (3, 0, 1, 0.0), "Sprint 2 · V1": (3, 1, 1, 0.2)})
         self.assertEqual((b["margin"]["sprints_left"], b["margin"]["work_left"], b["margin"]["margin"]), (1, 4, 1.0))
         self.assertEqual((b["ratios_by_phase"]["Plan"]["pairs"], b["ratios_by_phase"]["Plan"]["ratio"]), (1, 2.0))
-        self.assertEqual(b["coverage"], {"estimated_done": 1, "with_actual": 1, "missing": 0})
+        self.assertEqual(b["coverage"], {"estimated_done": 1, "with_actual": 1, "missing": 0,
+                                         "unplanned_unmeasured": 0})
 
     def test_carry_over_separates_carried_replanned_and_other(self):
         co = self.m["board"]["carry_over"]

@@ -118,7 +118,7 @@ def ratios(items: list[Item], group: str) -> dict[str, dict[str, float]]:
     pairs: dict[str, list[tuple[float, float]]] = defaultdict(list)
     for it in items:
         key = it.phase if group == "phase" else it.kind
-        if it.done and key and it.estimate and it.actual is not None:
+        if it.done and key and it.estimate and it.actual is not None and not it.unplanned:
             pairs[key].append((it.estimate, it.actual))
     return {key: {"pairs": len(p), "ratio": sum(a for _, a in p) / sum(e for e, _ in p),
                   "median": statistics.median(a / e for e, a in p), "small_sample": len(p) < SMALL_SAMPLE}
@@ -128,7 +128,9 @@ def ratios(items: list[Item], group: str) -> dict[str, dict[str, float]]:
 def coverage(items: list[Item]) -> dict[str, int]:
     estimated = [it for it in items if it.done and it.estimate]
     missing = sum(1 for it in estimated if it.actual is None)
-    return {"estimated_done": len(estimated), "with_actual": len(estimated) - missing, "missing": missing}
+    unplanned_unmeasured = sum(1 for it in items if it.done and it.unplanned and it.actual is None and not it.estimate)
+    return {"estimated_done": len(estimated), "with_actual": len(estimated) - missing, "missing": missing,
+            "unplanned_unmeasured": unplanned_unmeasured}
 
 
 def sprint_table(items: list[Item], capacity: float) -> list[str]:
@@ -159,8 +161,12 @@ def ratio_table(items: list[Item], group: str) -> list[str]:
 
 
 def coverage_line(c: dict[str, int], actual_field: str) -> str:
-    return (f"{c['with_actual']} of {c['estimated_done']} done estimated issues have an {actual_field}; "
+    line = (f"{c['with_actual']} of {c['estimated_done']} done estimated issues have an {actual_field}; "
             f"{c['missing']} missing.")
+    if c["unplanned_unmeasured"]:
+        line += (f" {c['unplanned_unmeasured']} done unplanned issues have neither {actual_field} nor "
+                 "Estimate, so Unplanned (d) leaves them out.")
+    return line
 
 
 def positive_days(value: str) -> float:
